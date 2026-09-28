@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "IQ Cinema",
+    "slug": "iq-cinema-native",
+    "scheme": "iqcinema",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0c10"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.iqcinema.native",
+      "infoPlist": { "UIBackgroundModes": ["audio"] }
+    },
+    "android": {
+      "package": "com.iqcinema.native",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b0c10"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      ["expo-video", { "supportsBackgroundPlayback": false, "supportsPictureInPicture": false }],
+      ["expo-image-picker", { "photosPermission": "IQ Cinema needs access to your photos so you can pick a poster or video to upload." }]
+    ],
+    "experiments": { "typedRoutes": false }
+  }
+}
