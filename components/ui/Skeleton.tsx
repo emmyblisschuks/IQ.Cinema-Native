@@ -1,6 +1,6 @@
-import { View } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 import clsx from "clsx";
 
-export function Skeleton({ className }: { className?: string }) {
-  return <View className={clsx("animate-pulse rounded-md bg-surface-raised", className)} />;
+export function Skeleton({ className, style }: { className?: string; style?: StyleProp<ViewStyle> }) {
+  return <View className={clsx("animate-pulse rounded-md bg-surface-raised", className)} style={style} />;
 }

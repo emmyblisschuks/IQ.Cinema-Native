@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { createContext, forwardRef, useContext } from "react";
 import { Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps } from "react-native";
 import { FONT } from "@/lib/theme";
 
@@ -13,7 +13,9 @@ export function resolveFont(className?: string) {
   const c = className ?? "";
   const display = /(^|\s)font-display(?=\s|$)/.test(c);
   const italic = /(^|\s)italic(?=\s|$)/.test(c);
-  const weight = c.match(WEIGHT_RE)?.[2] ?? "normal";
+  const weightMatch = c.match(WEIGHT_RE)?.[2];
+  const weight = weightMatch ?? "normal";
+  const explicit = display || italic || !!weightMatch;
 
   let family: string;
   if (display) {
@@ -28,20 +30,27 @@ export function resolveFont(className?: string) {
   else family = FONT.sans;
 
   const cleaned = c.replace(WEIGHT_RE_G, " ").replace(/(^|\s)font-display(?=\s|$)/g, " ").replace(/(^|\s)italic(?=\s|$)/g, " ");
-  return { family, className: cleaned.trim() };
+  return { family, explicit, className: cleaned.trim() };
 }
+
+// Nested <Text> (the web's inline <span>) must inherit color and font from its
+// parent instead of resetting them to the defaults.
+const NestedText = createContext(false);
 
 export const Text = forwardRef<RNText, TextProps & { className?: string }>(
   ({ className, style, ...props }, ref) => {
+    const nested = useContext(NestedText);
     const f = resolveFont(className);
     return (
-      <RNText
-        ref={ref}
-        // Default text color matches the web body color.
-        className={`text-text ${f.className}`}
-        style={[{ fontFamily: f.family }, style]}
-        {...props}
-      />
+      <NestedText.Provider value>
+        <RNText
+          ref={ref}
+          // Default text color matches the web body color.
+          className={nested ? f.className : `text-text ${f.className}`}
+          style={[!nested || f.explicit ? { fontFamily: f.family } : null, style]}
+          {...props}
+        />
+      </NestedText.Provider>
     );
   }
 );
