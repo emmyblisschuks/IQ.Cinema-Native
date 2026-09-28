@@ -77,3 +77,9 @@ export const FONT = {
   "display-bold": "Fraunces_700Bold",
   "display-italic": "Fraunces_600SemiBold_Italic",
 } as const;
+
+// "250 249 247" + 0.5 -> "rgba(250,249,247,0.5)" (for gradients that fade to a
+// theme color, where `transparent` would blend through black).
+export function rgba(triplet: string, alpha: number) {
+  return `rgba(${triplet.split(" ").join(",")},${alpha})`;
+}
