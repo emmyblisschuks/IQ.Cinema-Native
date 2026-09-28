@@ -27,6 +27,7 @@ import {
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { BottomNav } from "@/components/shared/BottomNav";
+import { NavChromeProvider } from "@/hooks/useNavChrome";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -56,6 +57,7 @@ function Shell() {
     <View style={[{ flex: 1 }, vars(tokens)]} className="bg-bg">
       <StatusBar style={isDark ? "light" : "dark"} />
       <AuthProvider>
+       <NavChromeProvider>
         <View className="w-full max-w-md flex-1 self-center bg-bg">
           <Stack
             screenOptions={{
@@ -66,6 +68,7 @@ function Shell() {
           />
         </View>
         <BottomNav />
+       </NavChromeProvider>
       </AuthProvider>
     </View>
   );

@@ -8,6 +8,7 @@ import { HomeIcon, ForYouIcon, MyListIcon, RewardsIcon, ProfileIcon } from "./Na
 import { Text } from "@/components/ui/Text";
 import { Pop } from "@/components/ui/Pop";
 import { useTheme } from "@/hooks/useTheme";
+import { useNavChrome } from "@/hooks/useNavChrome";
 
 const items = [
   { href: "/", label: "Home", icon: HomeIcon },
@@ -22,9 +23,10 @@ export function BottomNav() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { navHidden } = useNavChrome();
 
   const hideOn = ["/watch/", "/auth/"];
-  if (hideOn.some((p) => pathname.startsWith(p))) return null;
+  if (navHidden || hideOn.some((p) => pathname.startsWith(p))) return null;
 
   const activeIndex = items.findIndex(({ href }) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href)
