@@ -46,9 +46,13 @@ export const Button = forwardRef<View, ButtonProps>(
     const v = variants[variant];
     const s = sizes[size];
 
+    // A caller-supplied text color (e.g. `text-crimson`) replaces the
+    // variant's own, rather than fighting it in the generated stylesheet.
+    const overridesColor = !!textClassName && /(^|\s)text-(?!\[?\d|xs\b|sm\b|base\b|lg\b|xl\b|left|center|right)/.test(textClassName);
+
     const content = Children.map(children, (child) =>
       typeof child === "string" || typeof child === "number" ? (
-        <Text className={clsx("font-semibold tracking-tight", s.text, v.text, textClassName)}>{child}</Text>
+        <Text className={clsx("font-semibold tracking-tight", s.text, !overridesColor && v.text, textClassName)}>{child}</Text>
       ) : isValidElement(child) || child == null ? (
         child
       ) : (
