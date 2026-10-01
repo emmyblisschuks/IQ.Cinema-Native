@@ -36,7 +36,7 @@ import { EpisodeTray, type TrayEpisode } from "@/components/watch/EpisodeTray";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/shared/BottomSheet";
-import { downloadEpisodeVideo } from "@/lib/download";
+import { startDownload } from "@/lib/offline";
 import { storyboardPublicUrl } from "@/lib/storyboard";
 import { WEB_ORIGIN } from "@/lib/links";
 import { getDeviceId } from "@/lib/device";
@@ -316,7 +316,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
   async function handleDownload() {
     if (!ep?.video_path || !title) return;
     const fileName = `${title.title} - EP${ep.episode_number}.mp4`;
-    await downloadEpisodeVideo(supabase, ep.video_path, fileName);
+    await startDownload(supabase, { episode_id: ep.id, title_id: title.id, title: title.title, episode_number: ep.episode_number, video_path: ep.video_path });
   }
 
   // ─── Navigation between episodes ───────────────────────────────────────────
