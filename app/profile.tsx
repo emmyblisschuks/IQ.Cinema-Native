@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { ChevronRight, Wallet, Bell, LogOut, Film, Camera } from "lucide-react-native";
+import { ChevronRight, Wallet, Bell, LogOut, Film, Camera, Download } from "lucide-react-native";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";

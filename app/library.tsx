@@ -121,13 +121,7 @@ export default function LibraryPage() {
     <SafeAreaView edges={["top"]} className="flex-1 bg-bg">
       <PullToRefresh onRefresh={refresh}>
         <FadeIn style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 24 }}>
-          <LibraryTabs
-            value={top}
-            onChange={setTop}
-            editing={editing}
-            editDisabled={!total}
-            onToggleEdit={toggleEdit}
-          />
+          <LibraryTabs value={top} onChange={setTop} />
 
           <View className="mt-1">
             {top === "reminders" ? (

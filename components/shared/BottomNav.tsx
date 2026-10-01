@@ -25,7 +25,7 @@ export function BottomNav() {
   const { colors } = useTheme();
   const { navHidden } = useNavChrome();
 
-  const hideOn = ["/watch/", "/auth/"];
+  const hideOn = ["/watch/", "/auth/", "/downloads/play"];
   if (navHidden || hideOn.some((p) => pathname.startsWith(p))) return null;
 
   const activeIndex = items.findIndex(({ href }) =>

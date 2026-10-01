@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Easing,
   Modal,
   PanResponder,
@@ -25,11 +27,15 @@ export function BottomSheet({
   onClose,
   title,
   children,
+  footer,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  // Pinned under the scrolling content (the web's `sticky bottom-0`), e.g. a
+  // comment composer. The sheet lifts above the keyboard on iOS.
+  footer?: ReactNode;
 }) {
   const { height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -95,7 +101,7 @@ export function BottomSheet({
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent onRequestClose={runClose}>
-      <View className="flex-1 justify-end">
+      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <Animated.View
           pointerEvents="none"
           style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", opacity: backdropOpacity }}
@@ -121,8 +127,9 @@ export function BottomSheet({
           <ScrollView style={{ maxHeight: screenH * 0.7 }} contentContainerClassName="px-1 pb-2" bounces={false}>
             {children}
           </ScrollView>
+          {footer}
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
