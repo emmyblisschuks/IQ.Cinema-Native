@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.iqcinema.native",
+      "bundleIdentifier": "com.iqcinema.app",
       "infoPlist": { "UIBackgroundModes": ["audio"] }
     },
     "android": {
-      "package": "com.iqcinema.native",
+      "package": "com.iqcinema.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b0c10"
