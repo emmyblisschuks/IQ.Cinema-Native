@@ -1,0 +1,57 @@
+// app/downloads/play.tsx
+import { useEffect, useState } from "react";
+import { Pressable, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { Text } from "@/components/ui/Text";
+import { getLocalUri } from "@/lib/offline";
+
+function Player({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ flex: 1 }}
+      nativeControls
+      contentFit="contain"
+    />
+  );
+}
+
+export default function OfflinePlayPage() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const [uri, setUri] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getLocalUri(String(id)).then((u) => {
+      if (!cancelled) setUri(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaView edges={["top"]}>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: 16 }}>
+          <Text className="text-white">Back</Text>
+        </Pressable>
+      </SafeAreaView>
+      {uri ? (
+        <Player uri={uri} />
+      ) : (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <Text className="text-white">
+            {uri === null ? "This download is no longer on your device." : "Loading..."}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
