@@ -131,7 +131,7 @@ export default function SignupPage() {
         />
         {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
         <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-          {loading ? "Creating account…" : "Create account"}
+          {loading ? "Signing..." : "SIGN"}
         </Button>
       </View>
 
