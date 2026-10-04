@@ -48,7 +48,7 @@ export default function LoginPage() {
   return (
     <AuthScreen>
       <Text className="font-display text-3xl font-semibold text-text">Welcome back</Text>
-      <Text className="mt-1.5 text-sm text-muted">Sign in to keep watching.</Text>
+      <Text className="mt-1.5 text-sm text-muted">Sign in to Enjoy.</Text>
 
       <View className="mt-7 gap-3">
         <Input
