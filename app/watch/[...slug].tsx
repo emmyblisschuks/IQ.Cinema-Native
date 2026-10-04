@@ -1,4 +1,8 @@
-// app/watch/[...params].tsx
+// app/watch/[...slug].tsx
+//
+// NOTE: the catch-all must NOT be named `params` — that is a reserved URL
+// parameter in Expo Router / React Navigation, so the segments never arrive
+// and every episode resolves as "not found".
 //
 // Accepted routes:
 //   /watch/still-standing/ep-2   readable link (what Share produces)
@@ -11,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, usePathname } from "expo-router";
 import { createClient } from "@/lib/supabase/client";
 import { EpisodeFeed } from "@/components/watch/EpisodeFeed";
 import { Text } from "@/components/ui/Text";
@@ -73,8 +77,14 @@ async function resolve(segments: string[]): Promise<{ episodeId: string; episode
 }
 
 export default function WatchPage() {
-  const { params } = useLocalSearchParams<{ params: string | string[] }>();
-  const segments = Array.isArray(params) ? params : params ? [params] : [];
+  const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
+  const pathname = usePathname();
+  let segments = Array.isArray(slug) ? slug : slug ? [slug] : [];
+  if (!segments.length) {
+    // Fallback: /watch/<a>[/<b>] straight from the URL.
+    segments = pathname.replace(/^\/watch\/?/, "").split("/").filter(Boolean);
+  }
+  segments = segments.map((s) => decodeURIComponent(s));
   const key = segments.join("/");
 
   const [state, setState] = useState<{ status: "loading" } | { status: "missing" } | { status: "error" } | { status: "ready"; episodeId: string }>({
