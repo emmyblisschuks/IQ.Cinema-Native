@@ -74,7 +74,7 @@ export default function LoginPage() {
         </View>
         {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
         <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? "Signing..." : "SIGN"}
         </Button>
       </View>
 
