@@ -25,11 +25,18 @@ import {
   useFonts,
 } from "@expo-google-fonts/fraunces";
 import { AuthProvider } from "@/hooks/useAuth";
+import { UserSettingsProvider, useUserSettings } from "@/hooks/useUserSettings";
+import { I18nProvider } from "@/hooks/useI18n";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { NavChromeProvider } from "@/hooks/useNavChrome";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function I18nBridge({ children }: { children: React.ReactNode }) {
+  const { settings } = useUserSettings();
+  return <I18nProvider lang={settings.language}>{children}</I18nProvider>;
+}
 
 function Shell() {
   const { tokens, isDark, colors, ready } = useTheme();
@@ -57,18 +64,22 @@ function Shell() {
     <View style={[{ flex: 1 }, vars(tokens)]} className="bg-bg">
       <StatusBar style={isDark ? "light" : "dark"} />
       <AuthProvider>
-       <NavChromeProvider>
-        <View className="w-full max-w-md flex-1 self-center bg-bg">
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.bg },
-              animation: "fade",
-            }}
-          />
-        </View>
-        <BottomNav />
-       </NavChromeProvider>
+       <UserSettingsProvider>
+        <I18nBridge>
+         <NavChromeProvider>
+          <View className="w-full max-w-md flex-1 self-center bg-bg">
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.bg },
+                animation: "fade",
+              }}
+            />
+          </View>
+          <BottomNav />
+         </NavChromeProvider>
+        </I18nBridge>
+       </UserSettingsProvider>
       </AuthProvider>
     </View>
   );

@@ -53,9 +53,9 @@ type Episode = {
   episode_number: number;
   name: string | null;
   unlock_cost_coins: number | null;
-  // Signed video URL for this viewer (may require a coin unlock first).
+  // Storage object path inside the private `videos` bucket (the column is
+  // named video_url, but it holds a path, not a URL — same as the web app).
   video_url: string | null;
-  video_path: string | null;
   video_height: number | null;
   // Counts
   comment_count: number;
@@ -69,8 +69,6 @@ type TitleMeta = {
   synopsis: string | null;
   poster_url: string | null;
   content_rating: string;
-  genre: string | null;
-  vibe_tags: string[] | null;
   total_unique_views: number;
   free_episode_count: number | null;
   default_episode_unlock_coins: number;
@@ -80,7 +78,7 @@ async function loadEpisodeAndTitle(episodeId: string) {
   const [epRes, settingsRes] = await Promise.all([
     supabase
       .from("episodes")
-      .select("id, episode_number, name, unlock_cost_coins, video_url, video_path, video_height, comment_count, share_count, title_id")
+      .select("id, episode_number, name, unlock_cost_coins, video_url, video_height, comment_count, share_count, title_id")
       .eq("id", episodeId)
       .single(),
     supabase.from("platform_settings").select("default_free_episodes, default_episode_unlock_coins").single(),
@@ -91,7 +89,7 @@ async function loadEpisodeAndTitle(episodeId: string) {
 
   const titleRes = await supabase
     .from("titles")
-    .select("id, slug, title, synopsis, poster_url, content_rating, genre, vibe_tags, total_unique_views, free_episode_count")
+    .select("id, slug, title, synopsis, poster_url, content_rating, total_unique_views, free_episode_count")
     .eq("id", ep.title_id)
     .single();
 
@@ -119,6 +117,7 @@ async function loadSiblings(titleId: string) {
 }
 
 async function getSignedVideoUrl(videoPath: string) {
+  if (/^https?:\/\//i.test(videoPath)) return videoPath;
   const { data, error } = await supabase.storage
     .from("videos")
     .createSignedUrl(videoPath, 60 * 60 * 2);
@@ -126,13 +125,18 @@ async function getSignedVideoUrl(videoPath: string) {
   return data.signedUrl;
 }
 
-async function recordPlay(episodeId: string, titleId: string) {
+// Mirrors the web app's reportPlay: record_play(p_user_id, p_device_id,
+// p_episode_id, p_watched_seconds) validates and rate-limits server-side.
+async function reportPlay(userId: string | null, episodeId: string, watchedSeconds: number) {
   const deviceId = await getDeviceId();
-  await supabase.rpc("record_play", {
+  const { data, error } = await supabase.rpc("record_play", {
+    p_user_id: userId,
+    p_device_id: deviceId || null,
     p_episode_id: episodeId,
-    p_title_id: titleId,
-    p_device_id: deviceId,
+    p_watched_seconds: Math.max(0, Math.floor(watchedSeconds)),
   });
+  if (error) console.warn("record_play failed", error.message);
+  else if (data && data.ok === false) console.warn("record_play rejected", data.error);
 }
 
 export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) {
@@ -145,6 +149,9 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
   const [title, setTitle] = useState<TitleMeta | null>(null);
   const [siblings, setSiblings] = useState<TrayEpisode[]>([]);
   const [src, setSrc] = useState<string | undefined>(undefined);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [storyboardUrl, setStoryboardUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -159,8 +166,14 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
 
   // Engagement
   const [saved, setSaved] = useState(false);
+  // Watch-time reporting (same approach as the web feed): count only
+  // continuous playback, report the cumulative total every ~10s of watching.
   const watchSecondsRef = useRef(0);
-  const watchTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastPlayheadRef = useRef<number | null>(null);
+  const lastReportedRef = useRef(0);
+  const epIdRef = useRef<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
+  userIdRef.current = user?.id ?? null;
 
   // Sheet state
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -185,13 +198,18 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     let cancelled = false;
     setLoading(true);
     setSrc(undefined);
+    setVideoError(null);
+    setLoadFailed(false);
     setEp(null);
     setLocked(false);
     setUnlockError(null);
     watchSecondsRef.current = 0;
+    lastPlayheadRef.current = null;
+    lastReportedRef.current = 0;
+    epIdRef.current = episodeId;
 
     loadEpisodeAndTitle(episodeId).then(async (res) => {
-      if (cancelled || !res) { if (!cancelled) setLoading(false); return; }
+      if (cancelled || !res) { if (!cancelled) { setLoadFailed(true); setLoading(false); } return; }
       const { ep: loaded, title: loadedTitle } = res;
       if (!cancelled) {
         setEp(loaded);
@@ -220,22 +238,23 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
 
       // Video URL — skip if locked.
       if (!isFree && !hasUnlock) return;
-      if (loaded.video_path) {
-        const signed = await getSignedVideoUrl(loaded.video_path);
+      if (loaded.video_url) {
+        const signed = await getSignedVideoUrl(loaded.video_url);
         if (!cancelled && signed) {
           setSrc(signed);
-          setStoryboardUrl(storyboardPublicUrl(supabase, loaded.video_path));
+          if (!/^https?:\/\//i.test(loaded.video_url)) {
+            setStoryboardUrl(storyboardPublicUrl(supabase, loaded.video_url));
+          }
+        } else if (!cancelled) {
+          setVideoError("Couldn't load this video. Check your connection and try again.");
         }
-      } else if (loaded.video_url) {
-        if (!cancelled) setSrc(loaded.video_url);
+      } else if (!cancelled) {
+        setVideoError("This episode has no video yet.");
       }
-
-      // Record the view.
-      recordPlay(loaded.id, loadedTitle.id).catch(() => {});
     });
 
     return () => { cancelled = true; };
-  }, [episodeId, user]);
+  }, [episodeId, user, reloadKey]);
 
   // Followstatus
   useEffect(() => {
@@ -248,24 +267,31 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     return () => { ignore = true; };
   }, [user, title]);
 
-  // Watch-time accumulator (≤1s ticks, flushed every 30s).
-  function startWatchTick() {
-    if (watchTickRef.current) return;
-    watchTickRef.current = setInterval(async () => {
-      watchSecondsRef.current += 1;
-      if (watchSecondsRef.current % 30 === 0 && ep && title) {
-        await supabase.rpc("add_watch_seconds", {
-          p_episode_id: ep.id,
-          p_title_id: title.id,
-          p_seconds: 30,
-        }).then(() => {});
-      }
-    }, 1000);
-  }
-  function stopWatchTick() {
-    if (watchTickRef.current) { clearInterval(watchTickRef.current); watchTickRef.current = null; }
-  }
-  useEffect(() => () => stopWatchTick(), []);
+  // Called ~4x/second with the playhead. Only small forward steps count as
+  // watching, so seeks and scrubbing don't inflate watch time.
+  const reportProgress = useCallback((playhead: number, force = false) => {
+    const id = epIdRef.current;
+    if (!id) return;
+    const prev = lastPlayheadRef.current;
+    lastPlayheadRef.current = playhead;
+    if (prev !== null) {
+      const delta = playhead - prev;
+      if (delta > 0 && delta <= 1.5) watchSecondsRef.current += delta;
+    }
+    const watched = watchSecondsRef.current;
+    if (!force && watched - lastReportedRef.current < 10) return;
+    if (force && watched === lastReportedRef.current) return;
+    lastReportedRef.current = watched;
+    void reportPlay(userIdRef.current, id, watched);
+  }, []);
+
+  // Flush whatever is unreported when leaving the screen.
+  useEffect(() => () => {
+    const id = epIdRef.current;
+    if (id && watchSecondsRef.current > lastReportedRef.current) {
+      void reportPlay(userIdRef.current, id, watchSecondsRef.current);
+    }
+  }, []);
 
   // ─── Coin unlock ───────────────────────────────────────────────────────────
   async function handleUnlock() {
@@ -278,7 +304,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     }
     setUnlocking(true);
     setUnlockError(null);
-    const { data, error } = await supabase.rpc("unlock_episode", { p_episode_id: ep.id });
+    const { data, error } = await supabase.rpc("unlock_episode", { p_user_id: user.id, p_episode_id: ep.id });
     setUnlocking(false);
     if (error || !data?.ok) {
       setUnlockError(data?.error === "insufficient_coins" ? "Not enough coins." : error?.message ?? "Couldn't unlock this episode.");
@@ -289,8 +315,8 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     setEpisodeId((id) => id); // no-op re-trigger
     setLocked(false);
     // Force reload
-    const signed = ep.video_path ? await getSignedVideoUrl(ep.video_path) : ep.video_url ?? undefined;
-    if (signed) { setSrc(signed); if (ep.video_path) setStoryboardUrl(storyboardPublicUrl(supabase, ep.video_path)); }
+    const signed = ep.video_url ? await getSignedVideoUrl(ep.video_url) : undefined;
+    if (signed) { setSrc(signed); setStoryboardUrl(storyboardPublicUrl(supabase, ep.video_url!)); }
   }
 
   // ─── Save / follow ─────────────────────────────────────────────────────────
@@ -308,25 +334,26 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     await Clipboard.setStringAsync(url).catch(() => {});
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setShareCount((n) => n + 1);
-    // Optimistically inc the share count on the server.
-    supabase.from("episodes").update({ share_count: shareCount + 1 }).eq("id", ep.id).then(() => {});
+    // Server-side counter (episodes isn't client-writable).
+    supabase.rpc("record_episode_share", { p_episode_id: ep.id }).then(({ data }) => {
+      if (data?.ok && typeof data.share_count === "number") setShareCount(data.share_count);
+    });
   }
 
   // ─── Download ──────────────────────────────────────────────────────────────
   async function handleDownload() {
-    if (!ep?.video_path || !title) return;
+    if (!ep?.video_url || !title) return;
     const fileName = `${title.title} - EP${ep.episode_number}.mp4`;
-    await startDownload(supabase, { episode_id: ep.id, title_id: title.id, title: title.title, episode_number: ep.episode_number, video_path: ep.video_path });
+    await startDownload(supabase, { episode_id: ep.id, title_id: title.id, title: title.title, episode_number: ep.episode_number, video_path: ep.video_url });
   }
 
   // ─── Navigation between episodes ───────────────────────────────────────────
   const goToEpisode = useCallback((id: string) => {
     if (navigating.current || id === episodeId) return;
     navigating.current = true;
-    stopWatchTick();
-    // Flush remaining watch seconds.
-    if (watchSecondsRef.current > 0 && ep && title) {
-      void supabase.rpc("add_watch_seconds", { p_episode_id: ep.id, p_title_id: title.id, p_seconds: watchSecondsRef.current });
+    // Flush remaining watch seconds for the episode we're leaving.
+    if (watchSecondsRef.current > lastReportedRef.current && epIdRef.current) {
+      void reportPlay(userIdRef.current, epIdRef.current, watchSecondsRef.current);
     }
     setEpisodeId(id);
     navigating.current = false;
@@ -374,11 +401,26 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
   // Re-sign the video URL when it expires (expo-video fires an error event,
   // the VideoPlayer bubbles it up via onRequestFreshSrc).
   const handleRequestFreshSrc = useCallback(async () => {
-    if (!ep?.video_path) return undefined;
-    return (await getSignedVideoUrl(ep.video_path)) ?? undefined;
+    if (!ep?.video_url) return undefined;
+    return (await getSignedVideoUrl(ep.video_url)) ?? undefined;
   }, [ep]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
+  if (loadFailed) {
+    return (
+      <View className="flex-1 items-center justify-center gap-4 bg-black px-10">
+        <Text className="font-display text-center text-[20px] font-semibold text-white">Couldn't load this episode</Text>
+        <Text className="text-center text-[14px] text-white/70">Check your connection and try again.</Text>
+        <Button variant="gold" size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
+          Try again
+        </Button>
+        <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
+          <Text className="text-[14px] text-white/50">← Back</Text>
+        </Button>
+      </View>
+    );
+  }
+
   if (loading || !ep || !title) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
@@ -411,6 +453,20 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     );
   }
 
+  if (videoError && !src) {
+    return (
+      <View className="flex-1 items-center justify-center gap-4 bg-black px-10">
+        <Text className="text-center text-[15px] text-white/80">{videoError}</Text>
+        <Button variant="gold" size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
+          Try again
+        </Button>
+        <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
+          <Text className="text-[14px] text-white/50">← Back</Text>
+        </Button>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-black" {...pan.panHandlers}>
       <StatusBar hidden />
@@ -424,8 +480,11 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
           synopsis={title.synopsis}
           storyboardUrl={storyboardUrl}
           onOpenDetails={() => setDetailsOpen(true)}
-          onTimeUpdate={(s) => { if (s > 0) startWatchTick(); }}
-          onEnded={() => { if (nextId) goToEpisode(nextId); }}
+          onTimeUpdate={(s) => reportProgress(s)}
+          onEnded={() => {
+            reportProgress(lastPlayheadRef.current ?? 0, true);
+            if (nextId) goToEpisode(nextId);
+          }}
           onRequestFreshSrc={handleRequestFreshSrc}
           topBar={
             <PlayerTopBar
