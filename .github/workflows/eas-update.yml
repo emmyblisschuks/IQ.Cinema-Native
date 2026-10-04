@@ -2,6 +2,7 @@ name: EAS Update
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -9,10 +10,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: npm
       - run: npm ci
       - run: npm install -g eas-cli
-      - run: eas update --branch preview --message "${{ github.event.head_commit.message }}" --non-interactive
+      - run: eas update --branch preview --message "${{ github.event.head_commit.message || 'manual trigger' }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
