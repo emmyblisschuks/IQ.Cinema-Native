@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import { AppState } from "react-native";
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { getPushState, showLocalNotification } from "@/lib/push";
+import { getNotificationsModule, getPushState, showLocalNotification } from "@/lib/push";
 
 const supabase = createClient();
 
@@ -50,6 +49,8 @@ export function NotificationListener() {
   }, [user]);
 
   useEffect(() => {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return;
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
       const href = r.notification.request.content.data?.href;
       if (typeof href === "string" && href.startsWith("/")) router.push(href as never);

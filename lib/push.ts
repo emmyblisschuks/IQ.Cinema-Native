@@ -4,22 +4,40 @@
 // <NotificationListener/>; the OS never re-prompts after "Don't allow", so for
 // that case the UI tells the user to enable it in system settings.
 
-import * as Notifications from "expo-notifications";
+// expo-notifications is a native module. If this build of the app was made
+// before it was added, requiring it throws — so load it defensively and treat
+// the feature as "unsupported" instead of crashing the app on startup.
+type NotificationsModule = typeof import("expo-notifications");
+let Notifications: NotificationsModule | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Notifications = require("expo-notifications") as NotificationsModule;
+} catch {
+  Notifications = null;
+}
+export function getNotificationsModule() {
+  return Notifications;
+}
 import { Platform } from "react-native";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PushState = "granted" | "denied" | "default" | "unsupported";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+try {
+  Notifications?.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+} catch {
+  // ignore
+}
 
 export async function getPushState(): Promise<PushState> {
+  if (!Notifications) return "unsupported";
   try {
     const p = await Notifications.getPermissionsAsync();
     if (p.granted) return "granted";
@@ -32,7 +50,7 @@ export async function getPushState(): Promise<PushState> {
 // Asks the OS, persists the answer, and (if granted) tries the one-time
 // "Turn on notification permission" reward. Used by Settings and Rewards.
 export async function enablePush(supabase: SupabaseClient, userId: string): Promise<PushState> {
-  if ((await getPushState()) === "unsupported") return "unsupported";
+  if (!Notifications || (await getPushState()) === "unsupported") return "unsupported";
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "General",
@@ -49,7 +67,7 @@ export async function enablePush(supabase: SupabaseClient, userId: string): Prom
 }
 
 export async function showLocalNotification(opts: { id: string; title: string; body?: string | null; href?: string }) {
-  if ((await getPushState()) !== "granted") return;
+  if (!Notifications || (await getPushState()) !== "granted") return;
   try {
     await Notifications.scheduleNotificationAsync({
       identifier: opts.id,
