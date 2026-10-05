@@ -27,6 +27,7 @@ import {
 import { AuthProvider } from "@/hooks/useAuth";
 import { UserSettingsProvider, useUserSettings } from "@/hooks/useUserSettings";
 import { I18nProvider } from "@/hooks/useI18n";
+import { NotificationListener } from "@/components/shared/NotificationListener";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { NavChromeProvider } from "@/hooks/useNavChrome";
@@ -67,6 +68,7 @@ function Shell() {
        <UserSettingsProvider>
         <I18nBridge>
          <NavChromeProvider>
+          <NotificationListener />
           <View className="w-full max-w-md flex-1 self-center bg-bg">
             <Stack
               screenOptions={{

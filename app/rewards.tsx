@@ -1,12 +1,13 @@
 // app/rewards.tsx
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Linking, Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronRight, Gem, Coins } from "lucide-react-native";
 import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { enablePush } from "@/lib/push";
 import { useRewardsState } from "@/hooks/useRewardsState";
 import { useAnimatedNumber } from "@/hooks/useAnimatedNumber";
 import { useI18n } from "@/hooks/useI18n";
@@ -38,6 +39,7 @@ export default function RewardsPage() {
   const [busyTask, setBusyTask] = useState<string | null>(null);
   const [adTaskKey, setAdTaskKey] = useState<string | null>(null);
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function requireAuth() { router.push(`/auth/login?next=/rewards` as never); }
 
@@ -54,16 +56,46 @@ export default function RewardsPage() {
     if (task.status === "done" || busyTask) return;
     if (task.kind === "ad" || task.kind === "checkin_ad") { setAdTaskKey(task.key); return; }
     if (task.kind === "whatsapp" && task.status === "available") { setWhatsAppOpen(true); return; }
+    if (task.kind === "notifications" && task.status === "available") {
+      setBusyTask(task.key);
+      setNotice(null);
+      try {
+        const permission = await enablePush(supabase, user.id);
+        if (permission === "denied") setError(t("rewards.pushBlocked"));
+        if (permission === "unsupported") setError(t("rewards.pushUnsupported"));
+      } finally {
+        setBusyTask(null);
+        refresh();
+      }
+      return;
+    }
+    // Email: only payable once the address is verified, so an unverified user
+    // gets a (re)sent verification link instead of a claim.
+    if (task.kind === "email" && task.status === "available") {
+      setBusyTask(task.key);
+      setNotice(null);
+      const email = user.email ?? "";
+      const { error: resendError } = await supabase.auth.resend({ type: "signup", email });
+      setBusyTask(null);
+      if (resendError) setError(t("rewards.verifyEmailFailed"));
+      else setNotice(t("rewards.verifyEmailSent", { email }));
+      return;
+    }
     if (task.kind === "reserve") { router.push("/library" as never); return; }
     setBusyTask(task.key);
     if (task.kind === "social" && task.status === "available") {
       await supabase.rpc("mark_social_visit", { p_task_key: task.key });
+      if (task.action_url) Linking.openURL(task.action_url).catch(() => {});
       setBusyTask(null); refresh(); return;
     }
     const { data } = await supabase.rpc("claim_reward_task", { p_task_key: task.key });
     setBusyTask(null);
     if (!data?.ok) {
-      const msgs: Record<string, string> = { whatsapp_not_linked: t("rewards.linkWhatsappFirst") };
+      const msgs: Record<string, string> = {
+        email_not_verified: t("rewards.verifyEmailSent", { email: user.email ?? "" }),
+        whatsapp_not_linked: t("rewards.linkWhatsappFirst"),
+        permission_not_granted: t("rewards.enableNotificationsFirst"),
+      };
       if (data?.error && msgs[data.error]) setError(msgs[data.error]);
     }
     refresh();
@@ -109,6 +141,8 @@ export default function RewardsPage() {
           </Pressable>
 
           {error ? <View className="mt-3 rounded-md bg-crimson-soft px-3 py-2"><Text className="text-[13px] text-crimson">{error}</Text></View> : null}
+
+          {notice ? <View className="mt-3 rounded-md bg-surface-raised px-3 py-2"><Text className="text-[13px] text-text">{notice}</Text></View> : null}
 
           <View className="mt-6">
             <Text className="text-[13px] text-muted">{t("rewards.streak")} <Text className="font-semibold text-text">{loading ? "—" : state!.streak.current}</Text></Text>

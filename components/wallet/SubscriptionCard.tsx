@@ -1,26 +1,15 @@
 import { View } from "react-native";
-import { Check } from "lucide-react-native";
+import { Sparkles } from "lucide-react-native";
 import clsx from "clsx";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
+import { useI18n } from "@/hooks/useI18n";
+import type { SubscriptionPlan } from "@/lib/store";
 
-export type SubscriptionPlan = {
-  id: string;
-  name: string;
-  interval: "weekly" | "monthly" | "annual";
-  price_naira: number;
-  includes_new_releases: boolean;
-};
+export type { SubscriptionPlan };
 
-function Perk({ children }: { children: string }) {
-  return (
-    <View className="flex-row items-center gap-1.5">
-      <Icon as={Check} size={14} tone="crimson" />
-      <Text className="text-[13px] text-text/85">{children}</Text>
-    </View>
-  );
-}
+const INTERVAL_KEY = { weekly: "wallet.week", monthly: "wallet.month", annual: "wallet.year" } as const;
 
 export function SubscriptionCard({
   plan,
@@ -33,27 +22,49 @@ export function SubscriptionCard({
   onSubscribe: (id: string) => void;
   loading: boolean;
 }) {
+  const { t, lang } = useI18n();
+  const interval = t(INTERVAL_KEY[plan.interval]);
+  const showIntro = plan.intro_eligible && plan.intro_price_naira != null;
+  const price = showIntro ? plan.intro_price_naira! : plan.price_naira;
+
   return (
-    <View className={clsx("rounded-md border p-4", highlighted ? "border-pink bg-pink/10" : "border-border bg-surface")}>
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[15px] font-semibold text-text">{plan.name}</Text>
-        {highlighted ? (
-          <View className="rounded-full bg-pink px-2 py-0.5">
-            <Text className="text-[10px] font-semibold text-white">Best value</Text>
-          </View>
+    <View className={clsx("relative rounded-lg border p-4", highlighted ? "border-gold bg-gold-soft" : "border-border bg-surface")}>
+      {plan.badge ? (
+        <View className="absolute right-3 rounded-full bg-crimson px-2.5 py-0.5" style={{ top: -10 }}>
+          <Text className="text-[10px] font-bold text-white">{plan.badge}</Text>
+        </View>
+      ) : null}
+      <Text className="text-[15px] font-semibold text-text">👑 {plan.name}</Text>
+      {plan.description ? <Text className="mt-1 text-[13px] text-muted">{plan.description}</Text> : null}
+
+      <View className="mt-2.5 flex-row items-baseline gap-2">
+        <Text className="font-display text-[22px] font-semibold text-gold">{`₦${price.toLocaleString()}`}</Text>
+        {showIntro ? (
+          <Text className="text-[13px] font-medium text-muted" style={{ textDecorationLine: "line-through" }}>
+            {`₦${plan.price_naira.toLocaleString()}`}
+          </Text>
         ) : null}
       </View>
-      <Text className="mt-1 text-[22px] font-semibold text-text">
-        {`₦${plan.price_naira.toLocaleString()}`}
-        <Text className="text-[13px] font-normal text-muted">{` /${plan.interval}`}</Text>
-      </Text>
-      <View className="mt-3 gap-1.5">
-        <Perk>Unlimited back-catalog</Perk>
-        <Perk>Ad-free</Perk>
-        {plan.includes_new_releases ? <Perk>Day-one new releases</Perk> : null}
-      </View>
-      <Button className="mt-4 w-full" variant={highlighted ? "primary" : "secondary"} disabled={loading} onPress={() => onSubscribe(plan.id)}>
-        Subscribe
+      {showIntro ? (
+        <Text className="text-[11.5px] text-muted">
+          {t("wallet.introPrice", {
+            intro: plan.intro_price_naira!.toLocaleString(lang),
+            price: plan.price_naira.toLocaleString(lang),
+            interval,
+          })}
+        </Text>
+      ) : null}
+      <Text className="text-[11.5px] text-muted">{t("wallet.autoRenew")}</Text>
+
+      {plan.ai_generations != null && plan.ai_generations > 0 ? (
+        <View className="mt-3 flex-row items-center gap-1.5 rounded-md bg-surface-raised px-3 py-2">
+          <Icon as={Sparkles} size={14} tone="pink" />
+          <Text className="text-[12.5px] text-text">{t("wallet.aiGenerations", { n: plan.ai_generations, interval })}</Text>
+        </View>
+      ) : null}
+
+      <Button className="mt-3.5 w-full" variant={highlighted ? "gold" : "secondary"} disabled={loading} onPress={() => onSubscribe(plan.id)}>
+        {loading ? t("wallet.starting") : t("wallet.subscribe")}
       </Button>
     </View>
   );

@@ -6,6 +6,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { enablePush, getPushState, type PushState } from "@/lib/push";
+import { Linking } from "react-native";
 import { useI18n } from "@/hooks/useI18n";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
@@ -33,12 +36,31 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { settings, loaded, error, update, reload } = useUserSettings();
   const { t } = useI18n();
+  const { isOn, loaded: flagsLoaded } = useFeatureFlags();
+  const [pushState, setPushState] = useState<PushState>("default");
+  const [pushBusy, setPushBusy] = useState(false);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [waOpen, setWaOpen] = useState(false);
 
   useEffect(() => {
     supabase.from("app_languages").select("code, native_label").eq("enabled", true).order("sort_order").then(({ data }) => setLanguages((data as Language[]) ?? []));
   }, []);
+
+  useEffect(() => {
+    getPushState().then(setPushState);
+  }, [settings.push_permission]);
+
+  async function turnOnPush() {
+    if (!user) return;
+    setPushBusy(true);
+    try {
+      setPushState(await enablePush(supabase, user.id));
+      await reload();
+    } finally {
+      setPushBusy(false);
+    }
+  }
+  const pushOn = pushState === "granted";
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-bg">
@@ -51,19 +73,19 @@ export default function SettingsPage() {
 
           {error ? <View className="mt-3 rounded-md bg-crimson-soft px-3 py-2"><Text className="text-[13px] text-crimson">{t("settings.saveError")}</Text></View> : null}
 
-          {!loaded ? (
+          {!loaded || !flagsLoaded ? (
             <View className="mt-5 gap-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></View>
           ) : (
             <>
-              <View className="mt-6">
+              {isOn("settings_appearance") && <View className="mt-6">
                 <Text className="font-display mb-2 text-[14px] font-semibold text-text">{t("settings.appearance")}</Text>
                 <View className="flex-row items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
                   <Text className="text-[14px] text-text">{t("settings.appearance")}</Text>
                   <ThemeToggle />
                 </View>
-              </View>
+              </View>}
 
-              {languages.length > 0 && (
+              {isOn("settings_language") && languages.length > 0 && (
                 <View className="mt-6">
                   <Text className="font-display mb-2 text-[14px] font-semibold text-text">{t("settings.language")}</Text>
                   <View className="overflow-hidden rounded-md border border-border bg-surface">
@@ -78,25 +100,45 @@ export default function SettingsPage() {
                 </View>
               )}
 
-              <View className="mt-6">
+              {isOn("settings_playback") && <View className="mt-6">
                 <Text className="font-display mb-2 text-[14px] font-semibold text-text">{t("settings.playback")}</Text>
                 <ToggleRow label={t("settings.autoplay")} value={settings.autoplay_next} onChange={(v) => update({ autoplay_next: v })} />
-              </View>
+              </View>}
 
-              <View className="mt-6 gap-2">
+              {isOn("settings_notifications") && <View className="mt-6 gap-2">
                 <Text className="font-display mb-0 text-[14px] font-semibold text-text">{t("settings.notifications")}</Text>
+                <View className="rounded-md border border-border bg-surface px-4 py-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-[14px] text-text">{t("settings.push")}</Text>
+                    {pushOn ? (
+                      <Text className="text-[12.5px] font-semibold text-pink">{t("settings.pushOn")}</Text>
+                    ) : pushState === "default" ? (
+                      <Pressable onPress={turnOnPush} disabled={pushBusy} style={{ opacity: pushBusy ? 0.6 : 1 }}>
+                        <Text className="text-[12.5px] font-semibold text-pink">{t("settings.pushTurnOn")}</Text>
+                      </Pressable>
+                    ) : (
+                      <Text className="text-[12.5px] text-muted">{t("settings.pushOff")}</Text>
+                    )}
+                  </View>
+                  {pushState === "denied" ? (
+                    <Pressable onPress={() => Linking.openSettings().catch(() => {})}>
+                      <Text className="mt-1.5 text-[12px] text-muted">{t("settings.pushBlocked")}</Text>
+                    </Pressable>
+                  ) : null}
+                  {pushState === "unsupported" ? <Text className="mt-1.5 text-[12px] text-muted">{t("settings.pushUnsupported")}</Text> : null}
+                </View>
                 <ToggleRow label={t("settings.newEpisodes")} value={settings.notify_new_episodes} onChange={(v) => update({ notify_new_episodes: v })} />
                 <ToggleRow label={t("settings.rewards")} value={settings.notify_rewards} onChange={(v) => update({ notify_rewards: v })} />
                 <ToggleRow label={t("settings.promos")} value={settings.notify_promos} onChange={(v) => update({ notify_promos: v })} />
-              </View>
+              </View>}
 
-              <View className="mt-6">
+              {isOn("settings_whatsapp") && <View className="mt-6">
                 <Text className="font-display mb-2 text-[14px] font-semibold text-text">{t("settings.whatsapp")}</Text>
                 <Pressable onPress={() => setWaOpen(true)} className="flex-row items-center justify-between rounded-md border border-border bg-surface px-4 py-3 active:bg-surface-raised">
                   <Text className="text-[14px] text-text">{settings.whatsapp_number ?? t("settings.notLinked")}</Text>
                   <Text className="text-[12.5px] font-semibold text-pink">{settings.whatsapp_number ? t("settings.change") : t("settings.link")}</Text>
                 </Pressable>
-              </View>
+              </View>}
             </>
           )}
         </FadeIn>

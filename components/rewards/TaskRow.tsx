@@ -11,7 +11,7 @@ import { taskCtaLabel, taskProgressLabel } from "@/lib/rewards";
 const ICONS: Record<string, LucideIcon> = {
   login_reward: Gift, link_email: Mail, link_whatsapp: MessageCircle,
   enable_notifications: BellRing, reserve_drama: CalendarClock,
-  follow_youtube: Share2, follow_tiktok: MessageCircle,
+  follow_youtube: Play, follow_tiktok: MessageCircle,
   follow_facebook: Share2, follow_instagram: Share2,
   watch_10: Clock, watch_15: Clock, watch_20: Clock,
   watch_ad: Play, checkin_bonus_ad: Play,
@@ -35,6 +35,11 @@ export function TaskRow({ task, busy, onAction }: { task: RewardTask; busy: bool
         <View className="mt-0.5 flex-row items-center gap-1">
           <Icon as={Zap} size={12} tone="gold" fillTone="gold" />
           <Text className="text-[12.5px] text-gold">+{task.reward_coins}</Text>
+          {task.kind === "watch_time" && task.progress_seconds != null && task.threshold_seconds && !done ? (
+            <Text className="ml-1 text-[12.5px] text-muted">
+              ({Math.min(task.progress_seconds, task.threshold_seconds)}s/{task.threshold_seconds}s)
+            </Text>
+          ) : null}
         </View>
       </View>
       <Button size="sm" variant={done ? "secondary" : "primary"} disabled={done || busy} onPress={() => onAction(task)}>

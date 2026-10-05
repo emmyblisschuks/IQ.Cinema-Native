@@ -18,7 +18,7 @@ import clsx from "clsx";
 const supabase = createClient();
 
 type PointsItem = { id: string; kind: string; name: string; description: string|null; cost_points: number };
-type PointsState = { signed_in: boolean; vip: boolean; points: number; box: { opened_today: boolean; points_today: number|null; vip_only: boolean; min: number; max: number }; items: PointsItem[]; redemptions: { id: string; item_name: string; cost_points: number }[] };
+type PointsState = { signed_in: boolean; vip: boolean; points: number; box: { opened_today: boolean; points_today: number|null; vip_only: boolean; min: number; max: number }; items: PointsItem[]; redemptions: { id: string; item_name: string; cost_points: number; created_at: string }[] };
 
 export default function PointsPage() {
   const router = useRouter();
@@ -114,6 +114,20 @@ export default function PointsPage() {
               })}
             </View>
           </View>
+
+          {!loading && state.redemptions.length > 0 ? (
+            <View className="mt-7 pb-4">
+              <Text className="font-display mb-2.5 text-[16px] font-semibold text-text">{t("points.recentRedemptions")}</Text>
+              <View className="gap-1.5">
+                {state.redemptions.map((r) => (
+                  <View key={r.id} className="flex-row items-center justify-between">
+                    <Text className="text-[13px] text-text">{r.item_name}</Text>
+                    <Text className="text-[13px] text-muted">-{t("points.pts", { n: r.cost_points.toLocaleString() })}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </FadeIn>
       </ScrollView>
     </SafeAreaView>

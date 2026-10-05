@@ -11,6 +11,7 @@ export type UserSettings = {
   notify_new_episodes: boolean;
   notify_rewards: boolean;
   notify_promos: boolean;
+  push_permission: "default" | "granted" | "denied";
   whatsapp_number: string | null;
 };
 
@@ -22,10 +23,11 @@ const DEFAULT: UserSettings = {
   notify_new_episodes: true,
   notify_rewards: true,
   notify_promos: false,
+  push_permission: "default",
   whatsapp_number: null,
 };
 
-const COLS = "language, autoplay_next, notify_new_episodes, notify_rewards, notify_promos, whatsapp_number";
+const COLS = "language, autoplay_next, notify_new_episodes, notify_rewards, notify_promos, push_permission, whatsapp_number";
 const LANG_KEY = "iq-lang";
 
 type Ctx = { settings: UserSettings; loaded: boolean; error: string | null; update: (p: SettingsPatch) => Promise<boolean>; reload: () => Promise<void> };
