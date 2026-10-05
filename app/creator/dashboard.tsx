@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Plus, Zap } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { WEB_ORIGIN } from "@/lib/links";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,6 +52,12 @@ export default function CreatorDashboardPage() {
     supabase.rpc("check_partner_eligibility", { p_user_id: user.id }).then(({ data }) => { const row = Array.isArray(data)?data[0]:data; setEligibility(row??null); });
   }, [user]);
 
+  // Uploading and editing titles (video upload, storyboard, episode editor)
+  // runs on the web app for now; open it in the in-app browser.
+  function openWeb(path: string) {
+    WebBrowser.openBrowserAsync(`${WEB_ORIGIN}${path}`).catch(() => {});
+  }
+
   async function applyPartner() {
     if (!user) return;
     setApplying(true);
@@ -65,7 +73,7 @@ export default function CreatorDashboardPage() {
         <FadeIn>
           <View className="flex-row items-center justify-between">
             <Text className="font-display text-2xl font-semibold text-text">{t("creator.dashboard")}</Text>
-            <Button size="sm" onPress={() => router.push("/creator/upload" as never)}><Icon as={Plus} size={15} tone="white" /> {t("creator.upload")}</Button>
+            <Button size="sm" onPress={() => openWeb("/creator/upload")}><Icon as={Plus} size={15} tone="white" /> {t("creator.upload")}</Button>
           </View>
 
           <View className="mt-4 flex-row gap-3">
@@ -100,7 +108,7 @@ export default function CreatorDashboardPage() {
           <Text className="font-display mt-7 mb-2.5 text-[17px] font-semibold text-text">{t("creator.yourTitles")}</Text>
           <View className="overflow-hidden rounded-md border border-border bg-surface">
             {titles.map((row, i) => (
-              <Pressable key={row.id} onPress={() => router.push(`/creator/title/${row.id}` as never)} className={`flex-row items-center justify-between px-4 py-3 active:bg-surface-raised ${i>0?"border-t border-border":""}`}>
+              <Pressable key={row.id} onPress={() => openWeb(`/creator/title/${row.id}`)} className={`flex-row items-center justify-between px-4 py-3 active:bg-surface-raised ${i>0?"border-t border-border":""}`}>
                 <View>
                   <Text className="text-[14px] font-medium text-text">{row.title}</Text>
                   <Text className="mt-0.5 text-[12px] text-muted">{STATUS_KEYS[row.status]?t(STATUS_KEYS[row.status]):row.status}{row.genre?` · ${row.genre}`:""}</Text>
