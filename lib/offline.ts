@@ -8,6 +8,7 @@ export type DownloadRow = {
   episode_id: string;
   title_id: string | null;
   title: string;
+  poster_url?: string | null;
   episode_number: number;
   video_path: string;
   status: DownloadStatus;
@@ -18,7 +19,7 @@ export type DownloadRow = {
 export type DownloadInput = Pick<
   DownloadRow,
   "episode_id" | "title_id" | "title" | "episode_number" | "video_path"
->;
+> & { poster_url?: string | null };
 
 const DIR = `${FS.documentDirectory}downloads/`;
 const fileFor = (id: string) => `${DIR}${id}.mp4`;
@@ -61,6 +62,8 @@ function db() {
         );
         UPDATE downloads SET status = 'error' WHERE status = 'downloading';
       `);
+      // Added after launch: the folder grid shows the movie poster.
+      await d.execAsync("ALTER TABLE downloads ADD COLUMN poster_url TEXT").catch(() => {});
       await FS.makeDirectoryAsync(DIR, { intermediates: true }).catch(() => {});
       return d;
     })();
@@ -97,8 +100,8 @@ export async function startDownload(supabase: SupabaseClient, ep: DownloadInput)
   if (await getLocalUri(ep.episode_id)) return;
 
   await d.runAsync(
-    "INSERT OR REPLACE INTO downloads (episode_id, title_id, title, episode_number, video_path, status, progress, bytes, created_at) VALUES (?, ?, ?, ?, ?, 'downloading', 0, 0, ?)",
-    [ep.episode_id, ep.title_id, ep.title, ep.episode_number, ep.video_path, Date.now()]
+    "INSERT OR REPLACE INTO downloads (episode_id, title_id, title, poster_url, episode_number, video_path, status, progress, bytes, created_at) VALUES (?, ?, ?, ?, ?, ?, 'downloading', 0, 0, ?)",
+    [ep.episode_id, ep.title_id, ep.title, ep.poster_url ?? null, ep.episode_number, ep.video_path, Date.now()]
   );
   live.set(ep.episode_id, 0);
   emit(true);
@@ -145,4 +148,8 @@ export async function removeDownload(episodeId: string) {
   await FS.deleteAsync(fileFor(episodeId), { idempotent: true }).catch(() => {});
   await d.runAsync("DELETE FROM downloads WHERE episode_id = ?", [episodeId]);
   emit(true);
+}
+
+export async function removeDownloads(episodeIds: string[]) {
+  for (const id of episodeIds) await removeDownload(id);
 }

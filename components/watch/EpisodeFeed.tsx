@@ -331,7 +331,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
   async function handleDownload() {
     if (!ep?.video_url || !title) return;
     const fileName = `${title.title} - EP${ep.episode_number}.mp4`;
-    await startDownload(supabase, { episode_id: ep.id, title_id: title.id, title: title.title, episode_number: ep.episode_number, video_path: ep.video_url });
+    await startDownload(supabase, { episode_id: ep.id, title_id: title.id, title: title.title, poster_url: title.poster_url, episode_number: ep.episode_number, video_path: ep.video_url });
   }
 
   // ─── Navigation between episodes ───────────────────────────────────────────
