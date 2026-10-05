@@ -13,6 +13,7 @@ import { HomeRefresh } from "@/components/home/HomeRefresh";
 import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { Text } from "@/components/ui/Text";
+import { useI18n } from "@/hooks/useI18n";
 
 const supabase = createClient();
 
@@ -122,6 +123,7 @@ async function getHomeData({ tab, genre }: SearchParams): Promise<HomeData> {
 }
 
 export default function HomePage() {
+  const { t } = useI18n();
   const { tab, genre } = useLocalSearchParams<SearchParams>();
   const activeTab = tab ?? "popular";
 
@@ -208,9 +210,9 @@ export default function HomePage() {
 
             {!featured && !gridTitles.length && (
               <View className="mt-16 px-6">
-                <Text className="font-display text-center text-lg text-text">Nothing published yet</Text>
+                <Text className="font-display text-center text-lg text-text">{t("home.nothingPublished")}</Text>
                 <Text className="mt-1.5 text-center text-sm text-muted">
-                  Once creators publish titles, they'll show up here.
+                  {t("home.nothingPublishedBody")}
                 </Text>
               </View>
             )}

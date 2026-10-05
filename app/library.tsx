@@ -23,6 +23,7 @@ import { PosterCard } from "@/components/library/PosterCard";
 import { HistoryRow } from "@/components/library/HistoryRow";
 import { EmptyState } from "@/components/library/EmptyState";
 import { EditBar } from "@/components/library/EditBar";
+import { useI18n } from "@/hooks/useI18n";
 
 type ReminderTab = "released" | "upcoming";
 
@@ -34,6 +35,7 @@ const REMINDER_OPTIONS = [
 const supabase = createClient();
 
 export default function LibraryPage() {
+  const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const cell = useGridCell(3, 12);
 
@@ -164,7 +166,7 @@ export default function LibraryPage() {
 
           {error && user && items === null ? (
             <View className="mt-12 items-center">
-              <Text className="text-sm text-muted">Couldn't load your list.</Text>
+              <Text className="text-sm text-muted">{t("library.loadError")}</Text>
               <Button variant="secondary" size="sm" className="mt-3" onPress={refresh}>
                 Try again
               </Button>

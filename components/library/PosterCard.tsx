@@ -7,6 +7,7 @@ import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { CornerBadge } from "./FlameBadge";
 import { SelectDot } from "./SelectDot";
+import { useI18n } from "@/hooks/useI18n";
 
 // Grid card for the Following and Reminder tabs.
 export function PosterCard({
@@ -26,6 +27,7 @@ export function PosterCard({
   upcoming?: boolean;
   width: number;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const label = item.tags[0];
 
@@ -60,13 +62,13 @@ export function PosterCard({
               />
             ) : (
               <View className="h-full items-center justify-center">
-                <Text className="text-xs text-muted">No poster</Text>
+                <Text className="text-xs text-muted">{t("common.poster.none")}</Text>
               </View>
             )}
 
             {item.is_exclusive ? (
               <View className="absolute left-1.5 top-1.5 rounded-sm bg-crimson px-1.5 py-0.5">
-                <Text className="text-[10px] font-semibold text-white">Exclusive</Text>
+                <Text className="text-[10px] font-semibold text-white">{t("home.exclusive")}</Text>
               </View>
             ) : null}
 
@@ -74,7 +76,7 @@ export function PosterCard({
               <CornerBadge style={{ right: 0, top: 0, borderBottomLeftRadius: 16 }}>
                 <View className="flex-row items-center gap-1 px-2 py-1">
                   <Icon as={Sparkles} size={12} tone="white" fillTone="white" />
-                  <Text className="text-[12px] font-bold leading-none text-white">New EP</Text>
+                  <Text className="text-[12px] font-bold leading-none text-white">{t("library.newEp")}</Text>
                 </View>
               </CornerBadge>
             ) : null}

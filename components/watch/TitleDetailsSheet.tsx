@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { formatCount } from "@/lib/format";
+import { useI18n } from "@/hooks/useI18n";
 
 export type SimilarTitle = {
   id: string;
@@ -40,6 +41,7 @@ export function TitleDetailsSheet({
   // promo gets spliced in) instead of leaving for the title page.
   onSelectSimilar?: (t: SimilarTitle) => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const supabase = createClient();
   const [tags, setTags] = useState<string[] | null>(null);
@@ -115,7 +117,7 @@ export function TitleDetailsSheet({
         ) : null}
 
         <View>
-          <Text className="mb-2 text-[14px] font-semibold text-text">Similar titles</Text>
+          <Text className="mb-2 text-[14px] font-semibold text-text">{t("watch.moreLikeThis")}</Text>
           {similar === null ? (
             <View className="flex-row gap-2.5">
               {[1, 2, 3].map((i) => (
@@ -148,7 +150,7 @@ export function TitleDetailsSheet({
               ))}
             </ScrollView>
           ) : (
-            <Text className="py-2 text-[13px] text-muted">Nothing similar published yet.</Text>
+            <Text className="py-2 text-[13px] text-muted">{t("watch.nothingSimilar")}</Text>
           )}
         </View>
       </View>

@@ -5,6 +5,7 @@ import { BottomSheet } from "@/components/shared/BottomSheet";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { useTheme } from "@/hooks/useTheme";
+import { useI18n } from "@/hooks/useI18n";
 
 // Every episode is stored as a single rendition today (see video_width /
 // video_height on the row) — there's no ladder of bitrates to switch between
@@ -29,6 +30,7 @@ export function MoreSheet({
   videoHeight: number | null;
   onDownload: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const { colors } = useTheme();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function MoreSheet({
         <View className="flex-row items-center justify-between rounded-md px-1.5 py-2.5">
           <View className="flex-row items-center gap-2.5">
             <Icon as={MonitorPlay} size={18} tone="muted" />
-            <Text className="text-[14px] font-medium text-text">Quality</Text>
+            <Text className="text-[14px] font-medium text-text">{t("watch.quality")}</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
             <Text className="text-[13px] font-semibold text-muted">{qualityLabel(videoHeight)}</Text>

@@ -9,6 +9,7 @@ import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { BrandGradient } from "@/components/ui/BrandGradient";
 import { useGridCell } from "@/lib/layout";
+import { useI18n } from "@/hooks/useI18n";
 
 export type TrayEpisode = {
   id: string;
@@ -39,12 +40,13 @@ export function EpisodeTray({
   // feed to it instead of navigating (no reload, history stays clean).
   onSelect?: (episodeId: string) => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   // 4 columns, 10px gutters, 16px of horizontal padding (px-3 + sheet px-1).
   const cell = useGridCell(4, 10, 16);
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={`Episodes · ${episodes.length}`}>
+    <BottomSheet open={open} onClose={onClose} title={t("watch.episodesCount", { n: episodes.length })}>
       <View className="flex-row flex-wrap gap-2.5 px-3 pb-3 pt-1">
         {episodes.map((ep) => {
           const isFree = ep.episode_number <= freeCount;
@@ -96,7 +98,7 @@ export function EpisodeTray({
         })}
 
         {!episodes.length && (
-          <Text className="w-full py-6 text-center text-sm text-muted">No episodes published yet.</Text>
+          <Text className="w-full py-6 text-center text-sm text-muted">{t("title.noEpisodes")}</Text>
         )}
       </View>
     </BottomSheet>

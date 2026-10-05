@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Pop } from "@/components/ui/Pop";
 import { EpisodeTray, type TrayEpisode } from "@/components/watch/EpisodeTray";
 import { useUnlockedEpisodeIds } from "@/hooks/useUnlockedEpisodes";
+import { useI18n } from "@/hooks/useI18n";
 
 const supabase = createClient();
 
@@ -34,6 +35,7 @@ export function TitleActions({
   freeCount: number;
   defaultCost: number;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
   const [following, setFollowing] = useState(false);
@@ -177,12 +179,12 @@ export function TitleActions({
         >
           <View className="flex-row items-center gap-2.5">
             <Icon as={ListVideo} size={18} tone="muted" />
-            <Text className="text-[14px] font-medium text-text">Episodes</Text>
+            <Text className="text-[14px] font-medium text-text">{t("title.episodes")}</Text>
           </View>
           <Icon as={ChevronRight} size={18} tone="muted" />
         </Pressable>
       ) : (
-        <Text className="mt-3 text-sm text-muted">No episodes published yet.</Text>
+        <Text className="mt-3 text-sm text-muted">{t("title.noEpisodes")}</Text>
       )}
 
       {error ? <Text className="mt-2 text-[12px] text-crimson">{error}</Text> : null}

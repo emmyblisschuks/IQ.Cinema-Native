@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Pop } from "@/components/ui/Pop";
 import { CornerBadge } from "./FlameBadge";
 import { SelectDot } from "./SelectDot";
+import { useI18n } from "@/hooks/useI18n";
 
 // Horizontal row for the History tab. The bookmark on the right follows or
 // unfollows the title without leaving the list.
@@ -24,6 +25,7 @@ export function HistoryRow({
   onToggleSelect: () => void;
   onToggleFollow: () => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
 
   return (
@@ -46,12 +48,12 @@ export function HistoryRow({
             />
           ) : (
             <View className="h-full items-center justify-center">
-              <Text className="text-[10px] text-muted">No poster</Text>
+              <Text className="text-[10px] text-muted">{t("common.poster.none")}</Text>
             </View>
           )}
           {item.is_following ? (
             <CornerBadge style={{ left: 0, top: 0, borderBottomRightRadius: 16 }}>
-              <Text className="px-2 py-1 text-[11px] font-bold leading-none text-white">Following</Text>
+              <Text className="px-2 py-1 text-[11px] font-bold leading-none text-white">{t("library.following")}</Text>
             </CornerBadge>
           ) : null}
         </View>
