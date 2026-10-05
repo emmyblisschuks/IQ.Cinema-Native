@@ -10,15 +10,18 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { useI18n } from "@/hooks/useI18n";
+import { translateAuthError } from "@/lib/i18n/authErrors";
 
 export default function LoginPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string; error?: string }>();
   const supabase = createClient();
+  const { t, lang } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
-    params.error === "auth_callback_failed" ? "That link is invalid or has expired. Please try again." : null
+    params.error === "auth_callback_failed" ? t("auth.linkInvalid") : null
   );
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +36,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(translateAuthError(error.message, t));
       return;
     }
 
@@ -47,8 +50,8 @@ export default function LoginPage() {
 
   return (
     <AuthScreen>
-      <Text className="font-display text-3xl font-semibold text-text">Welcome back</Text>
-      <Text className="mt-1.5 text-sm text-muted">Sign in to keep watching.</Text>
+      <Text className="font-display text-3xl font-semibold text-text">{t("auth.welcomeBack")}</Text>
+      <Text className="mt-1.5 text-sm text-muted">{t("auth.signInToKeepWatching")}</Text>
 
       <View className="mt-7 gap-3">
         <Input
@@ -56,12 +59,12 @@ export default function LoginPage() {
           autoCapitalize="none"
           autoComplete="email"
           autoCorrect={false}
-          placeholder="Email"
+          placeholder={t("auth.email")}
           value={email}
           onChangeText={setEmail}
         />
         <PasswordInput
-          placeholder="Password"
+          placeholder={t("auth.password")}
           autoComplete="current-password"
           value={password}
           onChangeText={setPassword}
@@ -69,19 +72,19 @@ export default function LoginPage() {
         />
         <View className="items-end">
           <TextLink href="/auth/forgot-password" className="text-[13px] font-medium text-muted underline">
-            Forgot password?
+            {t("auth.forgotPassword")}
           </TextLink>
         </View>
         {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
         <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-          {loading ? "Signing..." : "Sign In"}
+          {loading ? t("auth.signingIn") : lang === "en" ? "Sign In" : t("auth.signIn")}
         </Button>
       </View>
 
       <Text className="mt-5 text-center text-sm text-muted">
-        New here?{" "}
+        {t("auth.newHere")}{" "}
         <TextLink href="/auth/signup" className="font-medium text-text underline">
-          Create an account
+          {t("auth.createAnAccount")}
         </TextLink>
       </Text>
     </AuthScreen>

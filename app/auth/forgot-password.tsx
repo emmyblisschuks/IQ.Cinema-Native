@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/Input";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { useI18n } from "@/hooks/useI18n";
+import { translateAuthError } from "@/lib/i18n/authErrors";
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(false);
     if (resetError) {
-      setError(resetError.message);
+      setError(translateAuthError(resetError.message, t));
       return;
     }
     setSent(true);
@@ -40,11 +43,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthScreen>
-      <Text className="font-display text-3xl font-semibold text-text">Reset your password</Text>
+      <Text className="font-display text-3xl font-semibold text-text">{t("auth.resetYourPassword")}</Text>
       <Text className="mt-1.5 text-sm text-muted">
-        {sent
-          ? "Check your inbox for a reset link."
-          : "Enter the email on your account and we'll send you a reset link."}
+        {sent ? t("auth.checkInbox") : t("auth.enterEmailForReset")}
       </Text>
 
       {!sent ? (
@@ -54,22 +55,22 @@ export default function ForgotPasswordPage() {
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect={false}
-            placeholder="Email"
+            placeholder={t("auth.email")}
             value={email}
             onChangeText={setEmail}
             onSubmitEditing={handleSubmit}
           />
           {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
           <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-            {loading ? "Sending…" : "Send reset link"}
+            {loading ? t("auth.sending") : t("auth.sendResetLink")}
           </Button>
         </View>
       ) : (
         <View className="mt-7 rounded-md border border-border bg-surface px-4 py-3">
           <Text className="text-[14px] text-text">
-            Sent to <Text className="font-medium">{email}</Text>. Didn't get it? Check spam, or{" "}
+            {t("auth.sentToPrefix")} <Text className="font-medium">{email}</Text>. {t("auth.didntGetIt")}{" "}
             <Text onPress={() => setSent(false)} className="font-medium underline">
-              try again
+              {t("auth.tryAgain")}
             </Text>
             .
           </Text>
@@ -78,7 +79,7 @@ export default function ForgotPasswordPage() {
 
       <Text className="mt-5 text-center text-sm text-muted">
         <TextLink href="/auth/login" className="font-medium text-text underline">
-          Back to sign in
+          {t("auth.backToSignIn")}
         </TextLink>
       </Text>
     </AuthScreen>

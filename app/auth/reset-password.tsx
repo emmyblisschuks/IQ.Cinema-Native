@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/Button";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Text } from "@/components/ui/Text";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { useI18n } from "@/hooks/useI18n";
+import { translateAuthError } from "@/lib/i18n/authErrors";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useI18n();
 
   const [checking, setChecking] = useState(true);
   const [hasSession, setHasSession] = useState(false);
@@ -36,11 +39,11 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("auth.passwordMin"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords don't match.");
+      setError(t("auth.passwordsDontMatch"));
       return;
     }
 
@@ -49,7 +52,7 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(translateAuthError(updateError.message, t));
       return;
     }
 
@@ -60,7 +63,7 @@ export default function ResetPasswordPage() {
   if (checking) {
     return (
       <View className="flex-1 items-center justify-center bg-bg">
-        <Text className="text-[14px] text-muted">Checking your link…</Text>
+        <Text className="text-[14px] text-muted">{t("auth.checkingLink")}</Text>
       </View>
     );
   }
@@ -68,12 +71,12 @@ export default function ResetPasswordPage() {
   if (!hasSession) {
     return (
       <AuthScreen>
-        <Text className="font-display text-3xl font-semibold text-text">Link expired</Text>
+        <Text className="font-display text-3xl font-semibold text-text">{t("auth.linkExpired")}</Text>
         <Text className="mt-1.5 text-sm text-muted">
-          This password reset link is invalid or has expired. Request a new one to continue.
+          {t("auth.linkExpiredBody")}
         </Text>
         <Button className="mt-7 w-full" size="lg" onPress={() => router.replace("/auth/forgot-password")}>
-          Request a new link
+          {t("auth.requestNewLink")}
         </Button>
       </AuthScreen>
     );
@@ -81,23 +84,23 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthScreen>
-      <Text className="font-display text-3xl font-semibold text-text">Set a new password</Text>
-      <Text className="mt-1.5 text-sm text-muted">Choose something you haven't used before.</Text>
+      <Text className="font-display text-3xl font-semibold text-text">{t("auth.setNewPassword")}</Text>
+      <Text className="mt-1.5 text-sm text-muted">{t("auth.chooseNew")}</Text>
 
       {done ? (
         <View className="mt-7 rounded-md border border-emerald-600/40 bg-emerald-600/10 px-4 py-3">
-          <Text className="text-[14px] text-emerald-500">Password updated — signing you in…</Text>
+          <Text className="text-[14px] text-emerald-500">{t("auth.passwordUpdated")}</Text>
         </View>
       ) : (
         <View className="mt-7 gap-3">
           <PasswordInput
-            placeholder="New password"
+            placeholder={t("auth.newPassword")}
             autoComplete="new-password"
             value={password}
             onChangeText={setPassword}
           />
           <PasswordInput
-            placeholder="Confirm new password"
+            placeholder={t("auth.confirmNewPassword")}
             autoComplete="new-password"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -105,7 +108,7 @@ export default function ResetPasswordPage() {
           />
           {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
           <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-            {loading ? "Updating…" : "Update password"}
+            {loading ? t("auth.updating") : t("auth.updatePassword")}
           </Button>
         </View>
       )}

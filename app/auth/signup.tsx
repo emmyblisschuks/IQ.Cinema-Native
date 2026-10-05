@@ -11,10 +11,13 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { useI18n } from "@/hooks/useI18n";
+import { translateAuthError } from "@/lib/i18n/authErrors";
 
 export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +38,7 @@ export default function SignupPage() {
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("auth.passwordMin"));
       return;
     }
     setLoading(true);
@@ -55,7 +58,7 @@ export default function SignupPage() {
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(translateAuthError(signUpError.message, t));
       return;
     }
 
@@ -81,18 +84,17 @@ export default function SignupPage() {
   if (awaitingConfirmation) {
     return (
       <AuthScreen>
-        <Text className="font-display text-3xl font-semibold text-text">Check your email</Text>
+        <Text className="font-display text-3xl font-semibold text-text">{t("auth.checkYourEmail")}</Text>
         <Text className="mt-1.5 text-sm text-muted">
-          We sent a confirmation link to <Text className="font-medium text-text">{email}</Text>. Tap it to finish
-          creating your account.
+          {t("auth.confirmationSent", { email })}
         </Text>
         <View className="mt-7 gap-3">
           <Button variant="secondary" className="w-full" size="lg" disabled={resending || resent} onPress={handleResend}>
-            {resent ? "Sent!" : resending ? "Resending…" : "Resend email"}
+            {resent ? t("auth.sent") : resending ? t("auth.resending") : t("auth.resendEmail")}
           </Button>
           <Text className="text-center text-sm text-muted">
             <TextLink href="/auth/login" className="font-medium text-text underline">
-              Back to sign in
+              {t("auth.backToSignIn")}
             </TextLink>
           </Text>
         </View>
@@ -102,12 +104,12 @@ export default function SignupPage() {
 
   return (
     <AuthScreen>
-      <Text className="font-display text-3xl font-semibold text-text">Create your account</Text>
-      <Text className="mt-1.5 text-sm text-muted">Join IQ Cinema — free to watch, free to sign up.</Text>
+      <Text className="font-display text-3xl font-semibold text-text">{t("auth.createYourAccount")}</Text>
+      <Text className="mt-1.5 text-sm text-muted">{t("auth.joinTagline")}</Text>
 
       <View className="mt-7 gap-3">
         <Input
-          placeholder="Username"
+          placeholder={t("auth.username")}
           autoCapitalize="none"
           autoCorrect={false}
           value={username}
@@ -118,12 +120,12 @@ export default function SignupPage() {
           autoCapitalize="none"
           autoComplete="email"
           autoCorrect={false}
-          placeholder="Email"
+          placeholder={t("auth.email")}
           value={email}
           onChangeText={setEmail}
         />
         <PasswordInput
-          placeholder="Password"
+          placeholder={t("auth.password")}
           autoComplete="new-password"
           value={password}
           onChangeText={setPassword}
@@ -131,14 +133,14 @@ export default function SignupPage() {
         />
         {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
         <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-          {loading ? "Signing..." : "SIGN"}
+          {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
         </Button>
       </View>
 
       <Text className="mt-5 text-center text-sm text-muted">
-        Already have an account?{" "}
+        {t("auth.alreadyHaveAccount")}{" "}
         <TextLink href="/auth/login" className="font-medium text-text underline">
-          Sign in
+          {t("auth.signIn")}
         </TextLink>
       </Text>
     </AuthScreen>
