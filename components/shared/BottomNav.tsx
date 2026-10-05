@@ -9,13 +9,14 @@ import { Text } from "@/components/ui/Text";
 import { Pop } from "@/components/ui/Pop";
 import { useTheme } from "@/hooks/useTheme";
 import { useNavChrome } from "@/hooks/useNavChrome";
+import { useI18n } from "@/hooks/useI18n";
 
 const items = [
-  { href: "/", label: "Home", icon: HomeIcon },
-  { href: "/for-you", label: "For You", icon: ForYouIcon },
-  { href: "/library", label: "My List", icon: MyListIcon },
-  { href: "/rewards", label: "Rewards", icon: RewardsIcon },
-  { href: "/profile", label: "Profile", icon: ProfileIcon },
+  { href: "/", label: "nav.home", icon: HomeIcon },
+  { href: "/for-you", label: "nav.forYou", icon: ForYouIcon },
+  { href: "/library", label: "nav.myList", icon: MyListIcon },
+  { href: "/rewards", label: "nav.rewards", icon: RewardsIcon },
+  { href: "/profile", label: "nav.profile", icon: ProfileIcon },
 ] as const;
 
 export function BottomNav() {
@@ -24,6 +25,7 @@ export function BottomNav() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { navHidden } = useNavChrome();
+  const { t } = useI18n();
 
   const hideOn = ["/watch/", "/auth/", "/downloads/play"];
   if (navHidden || hideOn.some((p) => pathname.startsWith(p))) return null;
@@ -47,7 +49,7 @@ export function BottomNav() {
               onPress={() => router.navigate(href)}
               className="flex-1 items-center gap-0.5 rounded-md py-2"
               accessibilityRole="button"
-              accessibilityLabel={label}
+              accessibilityLabel={t(label)}
             >
               <Pop active={active}>
                 <Icon width={28} height={28} color={color} />
@@ -55,7 +57,7 @@ export function BottomNav() {
               <Text
                 className={clsx("text-[11.5px] font-bold tracking-tight", active ? "text-pink" : "text-muted")}
               >
-                {label}
+                {t(label)}
               </Text>
             </Pressable>
           );

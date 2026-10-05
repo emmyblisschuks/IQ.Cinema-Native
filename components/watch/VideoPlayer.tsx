@@ -67,6 +67,10 @@ export function VideoPlayer({
   onEnded,
   onRequestFreshSrc,
   storyboardUrl,
+  hideWatermark = false,
+  embedded = false,
+  bottomContent,
+  cta,
 }: {
   src: string | undefined;
   autoPlay?: boolean;
@@ -90,6 +94,13 @@ export function VideoPlayer({
   onRequestFreshSrc?: () => Promise<string | undefined>;
   // One JPEG sprite sheet of preview frames (see lib/storyboard.ts).
   storyboardUrl?: string | null;
+  // For You feed: no app watermark, custom info block replacing the plain
+  // title/synopsis, and a full-width button between that block and the seek bar.
+  hideWatermark?: boolean;
+  // Sits above the tab bar (which already covers the bottom safe area).
+  embedded?: boolean;
+  bottomContent?: ReactNode;
+  cta?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
 
@@ -130,6 +141,7 @@ export function VideoPlayer({
   const [panelH, setPanelH] = useState(0);
   const [blockH, setBlockH] = useState(0);
   const [titleH, setTitleH] = useState(0);
+  const [ctaH, setCtaH] = useState(0);
 
   // 0..1 progress, driven natively (fill + thumb are transforms, so a 4Hz
   // playhead never triggers a layout pass — same intent as the web version
@@ -424,8 +436,10 @@ export function VideoPlayer({
   // level with (or just above) the title text. The title's height above the
   // bottom edge depends on how many synopsis lines there are, so it's derived
   // from the measured title block and handed to the rail.
-  const bottomPad = insets.bottom + 16;
+  const bottomPad = (embedded ? 0 : insets.bottom) + 16;
   const railBottom = useMemo(() => {
+    // With a CTA button the rail sits directly above it, never over it.
+    if (cta && ctaH) return Math.max(96, Math.round(bottomPad + BAR_HEIGHT + 8 + ctaH + 12));
     if (!title || !blockH) return 96; // no title: sit just above the seek bar
     // panel padding + progress row (24) + gap (8) + mb-11 (44) + the part of
     // the title block that sits above the title's own centre line.
@@ -434,7 +448,7 @@ export function VideoPlayer({
     // ~32px above the rail's bottom edge; +8 puts it slightly above the
     // title's centre line.
     return Math.max(96, Math.round(titleCenterFromBottom - 32 + 8));
-  }, [title, blockH, titleH, bottomPad]);
+  }, [title, blockH, titleH, bottomPad, cta, ctaH]);
 
   // ------------------------------------------------------------ preview ----
   const layout = useMemo(() => (duration ? storyboardLayout(duration) : null), [duration]);
@@ -583,12 +597,14 @@ export function VideoPlayer({
           — it stays visible whether or not the control layer is faded. It sits
           in the gap between the seek bar and the title/synopsis block so it
           never collides with either. */}
-      <Image
-        source={require("@/assets/watermark.png")}
-        pointerEvents="none"
-        style={{ position: "absolute", left: 14, bottom: insets.bottom + 52, width: 32, height: 32, borderRadius: 6, opacity: 0.55, zIndex: 10 }}
-        contentFit="cover"
-      />
+      {!hideWatermark ? (
+        <Image
+          source={require("@/assets/watermark.png")}
+          pointerEvents="none"
+          style={{ position: "absolute", left: 14, bottom: insets.bottom + 52, width: 32, height: 32, borderRadius: 6, opacity: 0.55, zIndex: 10 }}
+          contentFit="cover"
+        />
+      ) : null}
 
       {/* Action rail (save/comments/share/episodes) — fades with the rest of
           the controls layer instead of staying pinned on screen. */}
@@ -646,7 +662,9 @@ export function VideoPlayer({
         >
           <Scrim from={0.8} via={0.1} />
 
-          {title || synopsis ? (
+          {bottomContent ? (
+            <View pointerEvents="box-none">{bottomContent}</View>
+          ) : title || synopsis ? (
             <Pressable
               onPress={() => onOpenDetails?.()}
               onLayout={(e) => setBlockH(e.nativeEvent.layout.height)}
@@ -668,6 +686,12 @@ export function VideoPlayer({
                 </Text>
               ) : null}
             </Pressable>
+          ) : null}
+
+          {cta ? (
+            <View onLayout={(e) => setCtaH(e.nativeEvent.layout.height)} pointerEvents="box-none">
+              {cta}
+            </View>
           ) : null}
 
           <View className="flex-row items-center gap-2.5">

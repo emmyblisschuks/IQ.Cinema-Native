@@ -11,6 +11,7 @@ import { FadeIn } from "@/components/ui/FadeIn";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/hooks/useTheme";
+import { useI18n } from "@/hooks/useI18n";
 import { formatEpisodeCount } from "@/lib/format";
 import { UUID_RE, stripLegacySlugSuffix, titlePath } from "@/lib/links";
 import { rgba } from "@/lib/theme";
@@ -81,6 +82,7 @@ async function getTitle(param: string): Promise<Loaded | null> {
 export default function TitlePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useI18n();
   const { colors, tokens } = useTheme();
   const [data, setData] = useState<Loaded | null>(null);
   const [state, setState] = useState<"loading" | "missing" | "ready">("loading");
@@ -158,7 +160,7 @@ export default function TitlePage() {
         <View className="px-4 pb-8 pt-6">
           <Text className="font-display text-[22px] font-semibold leading-tight text-text">{title.title}</Text>
           <Text className="mt-1 text-[13px] text-muted">
-            {title.content_rating} · {title.status === "coming_soon" ? "Coming soon" : formatEpisodeCount(episodes.length)}
+            {title.content_rating} · {title.status === "coming_soon" ? t("title.comingSoon") : formatEpisodeCount(episodes.length, t)}
           </Text>
 
           {title.synopsis ? (

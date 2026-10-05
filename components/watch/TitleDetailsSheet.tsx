@@ -10,7 +10,7 @@ import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { formatCount } from "@/lib/format";
 
-type SimilarTitle = {
+export type SimilarTitle = {
   id: string;
   slug: string;
   title: string;
@@ -26,6 +26,7 @@ export function TitleDetailsSheet({
   views,
   contentRating,
   posterUrl,
+  onSelectSimilar,
 }: {
   open: boolean;
   onClose: () => void;
@@ -35,6 +36,9 @@ export function TitleDetailsSheet({
   views: number;
   contentRating?: string | null;
   posterUrl?: string | null;
+  // Over the For You feed a similar-title tap stays in the feed (that title's
+  // promo gets spliced in) instead of leaving for the title page.
+  onSelectSimilar?: (t: SimilarTitle) => void;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -126,7 +130,8 @@ export function TitleDetailsSheet({
                   onPress={() => {
                     markSheetNavigating();
                     onClose();
-                    router.replace(`/title/${t.slug}` as never);
+                    if (onSelectSimilar) onSelectSimilar(t);
+                    else router.replace(`/title/${t.slug}` as never);
                   }}
                   style={{ width: 86 }}
                   className="shrink-0"

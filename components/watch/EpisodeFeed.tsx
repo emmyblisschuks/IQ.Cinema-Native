@@ -39,7 +39,7 @@ import { BottomSheet } from "@/components/shared/BottomSheet";
 import { startDownload } from "@/lib/offline";
 import { storyboardPublicUrl } from "@/lib/storyboard";
 import { WEB_ORIGIN } from "@/lib/links";
-import { getDeviceId } from "@/lib/device";
+import { reportPlay } from "@/lib/reportPlay";
 
 const supabase = createClient();
 
@@ -125,19 +125,6 @@ async function getSignedVideoUrl(videoPath: string) {
   return data.signedUrl;
 }
 
-// Mirrors the web app's reportPlay: record_play(p_user_id, p_device_id,
-// p_episode_id, p_watched_seconds) validates and rate-limits server-side.
-async function reportPlay(userId: string | null, episodeId: string, watchedSeconds: number) {
-  const deviceId = await getDeviceId();
-  const { data, error } = await supabase.rpc("record_play", {
-    p_user_id: userId,
-    p_device_id: deviceId || null,
-    p_episode_id: episodeId,
-    p_watched_seconds: Math.max(0, Math.floor(watchedSeconds)),
-  });
-  if (error) console.warn("record_play failed", error.message);
-  else if (data && data.ok === false) console.warn("record_play rejected", data.error);
-}
 
 export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) {
   const router = useRouter();
