@@ -28,6 +28,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { UserSettingsProvider, useUserSettings } from "@/hooks/useUserSettings";
 import { I18nProvider } from "@/hooks/useI18n";
 import { NotificationListener } from "@/components/shared/NotificationListener";
+import { OnlineProvider } from "@/hooks/useOnlineStatus";
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { NavChromeProvider } from "@/hooks/useNavChrome";
@@ -65,6 +67,7 @@ function Shell() {
     <View style={[{ flex: 1 }, vars(tokens)]} className="bg-bg">
       <StatusBar style={isDark ? "light" : "dark"} />
       <AuthProvider>
+       <OnlineProvider>
        <UserSettingsProvider>
         <I18nBridge>
          <NavChromeProvider>
@@ -78,10 +81,12 @@ function Shell() {
               }}
             />
           </View>
+          <OfflineBanner />
           <BottomNav />
          </NavChromeProvider>
         </I18nBridge>
        </UserSettingsProvider>
+       </OnlineProvider>
       </AuthProvider>
     </View>
   );

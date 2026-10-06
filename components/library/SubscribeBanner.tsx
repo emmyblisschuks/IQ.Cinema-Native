@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { ChevronRight, Crown } from "lucide-react-native";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/hooks/useI18n";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
@@ -15,6 +16,7 @@ const known = new Map<string, boolean>();
 // Promo strip that only shows for people without an active subscription.
 export function SubscribeBanner() {
   const router = useRouter();
+  const { t } = useI18n();
   const { user } = useAuth();
   const userId = user?.id;
   const [subscribed, setSubscribed] = useState<boolean | null>(() =>
@@ -62,12 +64,14 @@ export function SubscribeBanner() {
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
       <View className="h-full flex-row items-center gap-3 px-3.5">
-        <Icon as={Crown} size={22} strokeWidth={1.75} tone="#3b2a0b" fillTone="rgba(59,42,11,0.15)" />
-        <Text className="flex-1 text-[16px] font-semibold tracking-tight text-[#3b2a0b]">
-          Unlimited access to all series
+        {/* Always black on the gold gradient — a themed text colour turns
+            near-white in dark mode and disappears into it. */}
+        <Icon as={Crown} size={22} strokeWidth={1.75} tone="#000" fillTone="rgba(0,0,0,0.12)" />
+        <Text className="flex-1 text-[16px] font-semibold tracking-tight" style={{ color: "#000" }}>
+          {t("library.unlimitedAccess")}
         </Text>
         <View className="h-2 w-2 rounded-full bg-pink" />
-        <Icon as={ChevronRight} size={20} tone="#3b2a0b" />
+        <Icon as={ChevronRight} size={20} tone="#000" />
       </View>
     </Pressable>
   );

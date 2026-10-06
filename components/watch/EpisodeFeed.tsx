@@ -60,6 +60,7 @@ type Episode = {
   // Counts
   comment_count: number;
   share_count: number;
+  save_count: number;
 };
 
 type TitleMeta = {
@@ -78,7 +79,7 @@ async function loadEpisodeAndTitle(episodeId: string) {
   const [epRes, settingsRes] = await Promise.all([
     supabase
       .from("episodes")
-      .select("id, episode_number, name, unlock_cost_coins, video_url, video_height, comment_count, share_count, title_id")
+      .select("id, episode_number, name, unlock_cost_coins, video_url, video_height, comment_count, share_count, save_count, title_id")
       .eq("id", episodeId)
       .single(),
     supabase.from("platform_settings").select("default_free_episodes, default_episode_unlock_coins").single(),
@@ -153,6 +154,8 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
 
   // Engagement
   const [saved, setSaved] = useState(false);
+  const [saveCount, setSaveCount] = useState(0);
+  const savingRef = useRef(false);
   // Watch-time reporting (same approach as the web feed): count only
   // continuous playback, report the cumulative total every ~10s of watching.
   const watchSecondsRef = useRef(0);
@@ -203,6 +206,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
         setTitle(loadedTitle);
         setCommentCount(loaded.comment_count);
         setShareCount(loaded.share_count);
+        setSaveCount(loaded.save_count ?? 0);
         setLoading(false);
       }
 
@@ -243,16 +247,20 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     return () => { cancelled = true; };
   }, [episodeId, user, reloadKey]);
 
-  // Followstatus
+  // Whether the viewer already saved this episode (episode_saves — the same
+  // table and counter the web app and For You use).
   useEffect(() => {
-    if (!user || !title) return;
+    if (!user || !episodeId) { setSaved(false); return; }
     let ignore = false;
-    supabase.rpc("get_title_user_state", { p_title_id: title.id }).then(({ data }) => {
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!ignore) setSaved(!!row?.is_following);
-    });
+    supabase
+      .from("episode_saves")
+      .select("episode_id")
+      .eq("user_id", user.id)
+      .eq("episode_id", episodeId)
+      .maybeSingle()
+      .then(({ data }) => { if (!ignore) setSaved(!!data); });
     return () => { ignore = true; };
-  }, [user, title]);
+  }, [user, episodeId]);
 
   // Called ~4x/second with the playhead. Only small forward steps count as
   // watching, so seeks and scrubbing don't inflate watch time.
@@ -308,11 +316,32 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
 
   // ─── Save / follow ─────────────────────────────────────────────────────────
   async function toggleSave() {
-    if (!user || !title) { router.push("/auth/login" as never); return; }
+    if (!user || !ep) { router.push("/auth/login" as never); return; }
+    if (savingRef.current) return;
+    savingRef.current = true;
     const next = !saved;
+    // Optimistic: flip the bookmark and bump the count right away.
     setSaved(next);
-    supabase.rpc("set_titles_follow", { p_title_ids: [title.id], p_follow: next }).then(({ error }) => { if (error) setSaved(!next); });
+    setSaveCount((n) => Math.max(0, n + (next ? 1 : -1)));
+    let failed = false;
+    try {
+      const { error } = next
+        ? await supabase
+            .from("episode_saves")
+            .upsert({ user_id: user.id, episode_id: ep.id }, { onConflict: "user_id,episode_id", ignoreDuplicates: true })
+        : await supabase.from("episode_saves").delete().eq("user_id", user.id).eq("episode_id", ep.id);
+      failed = !!error;
+    } catch {
+      failed = true;
+    } finally {
+      savingRef.current = false;
+    }
+    if (failed) {
+      setSaved(!next);
+      setSaveCount((n) => Math.max(0, n + (next ? -1 : 1)));
+    }
   }
+
 
   // ─── Share ─────────────────────────────────────────────────────────────────
   async function handleShare() {
@@ -486,7 +515,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
           actionRail={(railBottom) => (
             <ActionRail
               saved={saved}
-              saveCount={0}
+              saveCount={saveCount}
               onToggleSave={toggleSave}
               commentCount={commentCount}
               onOpenComments={() => setCommentsOpen(true)}

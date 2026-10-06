@@ -73,7 +73,7 @@ export default function CreatorDashboardPage() {
         <FadeIn>
           <View className="flex-row items-center justify-between">
             <Text className="font-display text-2xl font-semibold text-text">{t("creator.dashboard")}</Text>
-            <Button size="sm" onPress={() => openWeb("/creator/upload")}><Icon as={Plus} size={15} tone="white" /> {t("creator.upload")}</Button>
+            <Button size="sm" onPress={() => router.push("/creator/upload" as never)}><Icon as={Plus} size={15} tone="white" /> {t("creator.upload")}</Button>
           </View>
 
           <View className="mt-4 flex-row gap-3">
@@ -113,9 +113,20 @@ export default function CreatorDashboardPage() {
                   <Text className="text-[14px] font-medium text-text">{row.title}</Text>
                   <Text className="mt-0.5 text-[12px] text-muted">{STATUS_KEYS[row.status]?t(STATUS_KEYS[row.status]):row.status}{row.genre?` · ${row.genre}`:""}</Text>
                 </View>
-                <View className="flex-row items-center gap-1">
-                  <Icon as={Zap} size={11} tone="gold" fillTone="gold" />
-                  <Text className="text-[12px] text-muted">{row.total_unique_views}</Text>
+                <View className="flex-row items-center gap-3">
+                  <View className="flex-row items-center gap-1">
+                    <Icon as={Zap} size={11} tone="gold" fillTone="gold" />
+                    <Text className="text-[12px] text-muted">{row.total_unique_views}</Text>
+                  </View>
+                  {/* Add an episode without leaving the app */}
+                  <Pressable
+                    onPress={() => router.push(`/creator/upload?titleId=${row.id}` as never)}
+                    hitSlop={8}
+                    accessibilityLabel={t("upload.addUnit.episode")}
+                    className="h-8 w-8 items-center justify-center rounded-full bg-pink"
+                  >
+                    <Icon as={Plus} size={16} tone="white" />
+                  </Pressable>
                 </View>
               </Pressable>
             ))}

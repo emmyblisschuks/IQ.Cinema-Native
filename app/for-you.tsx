@@ -1,14 +1,15 @@
 // app/for-you.tsx
 
 import { View } from "react-native";
-import { StatusBar } from "expo-status-bar";
 import { ForYouFeed } from "@/components/foryou/ForYouFeed";
+import { useTheme } from "@/hooks/useTheme";
 
-// Always dark, whatever the app theme — it's a video feed.
+// The video itself is always dark; everything around it (loading, empty and
+// error states, search) follows the app theme.
 export default function ForYouPage() {
+  const { colors } = useTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      <StatusBar style="light" />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ForYouFeed />
     </View>
   );

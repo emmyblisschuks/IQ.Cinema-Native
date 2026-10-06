@@ -20,6 +20,8 @@ import { DEFAULT_CATEGORY, type Category } from "@/lib/categories";
 import { EMPTY_COPY_KEY, parseForYouTab, rpcTabFor, type ForYouTab } from "@/lib/forYouTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useTheme } from "@/hooks/useTheme";
+import { StatusBar } from "expo-status-bar";
 import { Text } from "@/components/ui/Text";
 import { VideoPlayer } from "@/components/watch/VideoPlayer";
 import { ActionRail } from "@/components/watch/ActionRail";
@@ -45,6 +47,7 @@ function engagementFor(item: PromoItem): Engagement {
 
 export function ForYouFeed() {
   const { t } = useI18n();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const params = useLocalSearchParams<{ tab?: string; title?: string }>();
@@ -422,8 +425,10 @@ export function ForYouFeed() {
     [items, slideH]
   );
 
+  const hasVideo = !!items && items.length > 0;
   const header = (
     <ForYouHeader
+      onVideo={hasVideo}
       tab={tab}
       onTabChange={(next) => next !== tab && setTab(next)}
       category={category}
@@ -434,10 +439,11 @@ export function ForYouFeed() {
 
   if (!items) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <StatusBar style={isDark ? "light" : "dark"} />
         {header}
         <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.muted} />
         </View>
       </View>
     );
@@ -553,7 +559,9 @@ export function ForYouFeed() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }} onLayout={(e: LayoutChangeEvent) => setSlideH(Math.round(e.nativeEvent.layout.height))}>
+    <View style={{ flex: 1, backgroundColor: hasVideo ? "#000" : colors.bg }} onLayout={(e: LayoutChangeEvent) => setSlideH(Math.round(e.nativeEvent.layout.height))}>
+      {/* Video sits under the status bar → light icons; empty/error states use the app theme. */}
+      <StatusBar style={hasVideo || isDark ? "light" : "dark"} />
       {header}
       <ForYouSearch
         open={showSearch}
@@ -590,7 +598,7 @@ export function ForYouFeed() {
 
       {!items.length ? (
         <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
-          <Text className="text-center text-[14px] text-white/70">{feedError ? t("foryou.searchUnavailable") : t(EMPTY_COPY_KEY[tab])}</Text>
+          <Text className="text-center text-[14px] text-muted">{feedError ? t("foryou.searchUnavailable") : t(EMPTY_COPY_KEY[tab])}</Text>
           {feedError ? (
             <Pressable onPress={() => setReloadKey((k) => k + 1)} className="mt-4 rounded-md bg-pink px-5 py-2.5">
               <Text className="text-[14px] font-semibold text-white">{t("common.retry")}</Text>

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useColorScheme } from "react-native";
+import { Appearance, useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colorScheme } from "nativewind";
 import {
@@ -38,10 +38,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const isDark = mode === "system" ? system === "dark" : mode === "dark";
 
-  // Keep NativeWind's `dark:` variants in step with the resolved theme.
+  // Keep NativeWind's `dark:` variants and the OS-level appearance in step
+  // with the chosen mode. Forcing "light"/"dark" overrides the device
+  // appearance for the whole app, and that override sticks until it's
+  // released — so choosing "system" must clear it, otherwise the app keeps
+  // whichever theme was used last instead of following the device.
   useEffect(() => {
-    colorScheme.set(isDark ? "dark" : "light");
-  }, [isDark]);
+    if (!ready) return;
+    if (mode === "system") {
+      try {
+        Appearance.setColorScheme("unspecified");
+      } catch {
+        // older runtimes: NativeWind's "system" below still releases it
+      }
+      colorScheme.set("system");
+    } else {
+      colorScheme.set(mode);
+    }
+  }, [mode, ready]);
 
   const setTheme = useCallback((next: ThemeMode) => {
     setMode(next);

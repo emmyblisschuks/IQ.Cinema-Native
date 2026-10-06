@@ -13,6 +13,7 @@ import { FOR_YOU_TABS, type ForYouTab } from "@/lib/forYouTabs";
 import { SegmentedControl } from "@/components/library/SegmentedControl";
 import { Text } from "@/components/ui/Text";
 import { useI18n } from "@/hooks/useI18n";
+import { useTheme } from "@/hooks/useTheme";
 
 export function ForYouHeader({
   tab,
@@ -20,14 +21,21 @@ export function ForYouHeader({
   category,
   onCategoryChange,
   onSearch,
+  onVideo = true,
 }: {
   tab: ForYouTab;
   onTabChange: (tab: ForYouTab) => void;
   category: Category;
   onCategoryChange: (category: Category) => void;
   onSearch: () => void;
+  // True while a video sits behind the header (white text on a dark scrim);
+  // false for loading/empty states, which use the app theme instead.
+  onVideo?: boolean;
 }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const fg = onVideo ? "#fff" : colors.text;
+  const fgDim = onVideo ? "rgba(255,255,255,0.6)" : colors.muted;
   const insets = useSafeAreaInsets();
   // Measured underline: measure the active tab's box instead of hard-coding
   // an offset, so it stays aligned if a label (or language) changes width.
@@ -51,11 +59,13 @@ export function ForYouHeader({
 
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0, zIndex: 30 }}>
-      <LinearGradient
-        pointerEvents="none"
-        colors={["rgba(0,0,0,0.7)", "rgba(0,0,0,0.3)", "rgba(0,0,0,0)"]}
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-      />
+      {onVideo ? (
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(0,0,0,0.7)", "rgba(0,0,0,0.3)", "rgba(0,0,0,0)"]}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+        />
+      ) : null}
       <View style={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 12 }} pointerEvents="box-none">
         <View className="flex-row items-center gap-3">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1" accessibilityRole="tablist">
@@ -73,7 +83,7 @@ export function ForYouHeader({
                 >
                   <Text
                     className="text-[15px] font-extrabold uppercase tracking-wide"
-                    style={{ color: tab === key ? "#fff" : "rgba(255,255,255,0.6)" }}
+                    style={{ color: tab === key ? fg : fgDim }}
                   >
                     {t(labelKey)}
                   </Text>
@@ -89,13 +99,13 @@ export function ForYouHeader({
             </View>
           </ScrollView>
           <Pressable onPress={onSearch} accessibilityLabel={t("common.search")} hitSlop={8} className="-mt-2 h-8 w-8 items-center justify-center">
-            <Search size={19} color="#fff" />
+            <Search size={19} color={fg} />
           </Pressable>
         </View>
 
         {tab === "collections" ? (
           <View className="mt-1">
-            <SegmentedControl ariaLabel={t("foryou.collection")} tone="overlay" options={CATEGORIES} value={category} onChange={onCategoryChange} />
+            <SegmentedControl ariaLabel={t("foryou.collection")} tone={onVideo ? "overlay" : "themed"} options={CATEGORIES} value={category} onChange={onCategoryChange} />
           </View>
         ) : null}
       </View>

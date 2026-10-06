@@ -10,6 +10,7 @@ import { ChevronRight, Wallet, LogOut, Film, Camera, Download, Gem, Ticket, Gift
 import * as Linking from "expo-linking";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { BrandGradient } from "@/components/ui/BrandGradient";
 import { useWallet } from "@/hooks/useWallet";
 import { useI18n } from "@/hooks/useI18n";
 import { NotificationBell } from "@/components/shared/NotificationBell";
@@ -262,19 +263,21 @@ export default function ProfilePage() {
           {!isVip ? (
             <Pressable
               onPress={() => router.push("/wallet")}
-              className="mt-5 rounded-lg border border-gold bg-gold-soft p-4"
+              className="mt-5 overflow-hidden rounded-lg p-4"
+              style={({ pressed }) => (pressed ? { opacity: 0.92 } : null)}
             >
+              <BrandGradient radius={12} />
               <View className="flex-row items-center gap-1.5">
-                <Icon as={Crown} size={16} tone="gold" />
-                <Text className="flex-1 text-[14.5px] font-semibold text-text">{t("profile.vipTitle")}</Text>
+                <Crown size={16} color="#fff" fill="rgba(255,255,255,0.25)" />
+                <Text className="flex-1 text-[14.5px] font-semibold" style={{ color: "#fff" }}>{t("profile.vipTitle")}</Text>
               </View>
               <View className="mt-2.5 flex-row flex-wrap items-center gap-x-4 gap-y-1">
-                <Text className="text-[11.5px] text-muted">{t("profile.vipFree")}</Text>
-                <Text className="text-[11.5px] text-muted">{t("profile.vipAdFree")}</Text>
-                <Text className="text-[11.5px] text-muted">{t("profile.vipDownloads")}</Text>
+                <Text className="text-[11.5px]" style={{ color: "rgba(255,255,255,0.85)" }}>{t("profile.vipFree")}</Text>
+                <Text className="text-[11.5px]" style={{ color: "rgba(255,255,255,0.85)" }}>{t("profile.vipAdFree")}</Text>
+                <Text className="text-[11.5px]" style={{ color: "rgba(255,255,255,0.85)" }}>{t("profile.vipDownloads")}</Text>
               </View>
-              <View className="mt-3 h-9 items-center justify-center rounded-md bg-gold">
-                <Text className="text-[13.5px] font-semibold" style={{ color: "rgb(20,16,8)" }}>{t("profile.activate")}</Text>
+              <View className="mt-3 h-9 items-center justify-center rounded-md" style={{ backgroundColor: "#fff" }}>
+                <Text className="text-[13.5px] font-semibold" style={{ color: "rgb(150,45,40)" }}>{t("profile.activate")}</Text>
               </View>
             </Pressable>
           ) : null}

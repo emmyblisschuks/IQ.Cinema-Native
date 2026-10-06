@@ -8,11 +8,13 @@ import { FlatList, Keyboard, Modal, Pressable, TextInput, View } from "react-nat
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { ArrowLeft, Clock, Search, X } from "lucide-react-native";
 import { createClient } from "@/lib/supabase/client";
 import { formatEpisodeCount } from "@/lib/format";
 import { Text } from "@/components/ui/Text";
 import { useI18n } from "@/hooks/useI18n";
+import { useTheme } from "@/hooks/useTheme";
 
 // Same row shape the feed uses (get_for_you_feed_v2 / search_for_you_promos).
 export type SearchPromo = {
@@ -105,22 +107,24 @@ function snippetFor(synopsis: string | null, tokens: string[]): string {
 
 function ResultRow({ item, tokens, onPick }: { item: SearchPromo; tokens: string[]; onPick: (item: SearchPromo) => void }) {
   const { t } = useI18n();
+  const { colors, isDark } = useTheme();
   const art = item.poster_url ?? item.thumbnail_url;
   const snippet = snippetFor(item.synopsis, tokens);
   return (
-    <Pressable onPress={() => onPick(item)} className="flex-row items-start gap-3 px-4 py-2.5 active:bg-white/10">
-      <View className="overflow-hidden rounded-md" style={{ width: 60, height: 84, backgroundColor: "rgba(255,255,255,0.1)" }}>
+    <Pressable onPress={() => onPick(item)} className="flex-row items-start gap-3 px-4 py-2.5"
+      style={({ pressed }) => (pressed ? { backgroundColor: colors["surface-raised"] } : null)}>
+      <View className="overflow-hidden rounded-md" style={{ width: 60, height: 84, backgroundColor: colors["surface-raised"] }}>
         {art ? <Image source={{ uri: art }} style={{ width: 60, height: 84 }} contentFit="cover" /> : null}
       </View>
       <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="text-[15px] font-semibold text-white">
+        <Text numberOfLines={1} className="text-[15px] font-semibold text-text">
           <Highlight text={item.title} tokens={tokens} />
         </Text>
-        <Text numberOfLines={1} className="mt-0.5 text-[12px] text-white/55">
+        <Text numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
           {[item.tags?.[0], item.total_episodes > 0 ? formatEpisodeCount(item.total_episodes, t) : null].filter(Boolean).join(" · ")}
         </Text>
         {snippet ? (
-          <Text numberOfLines={2} className="mt-1 text-[13px] leading-snug text-white/70">
+          <Text numberOfLines={2} className="mt-1 text-[13px] leading-snug text-muted">
             <Highlight text={snippet} tokens={tokens} />
           </Text>
         ) : null}
@@ -139,6 +143,7 @@ export function ForYouSearch({
   onSelect: (item: SearchPromo) => void;
 }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const supabase = useMemo(() => createClient(), []);
   const inputRef = useRef<TextInput>(null);
@@ -224,7 +229,7 @@ export function ForYouSearch({
 
   const header = showResults ? (
     !loading && settledQuery === q && !failed && results.length > 0 ? (
-      <Text className="px-4 pb-1 pt-3 text-[12px] font-semibold uppercase tracking-wide text-white/45">
+      <Text className="px-4 pb-1 pt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">
         {results.length} {results.length === 1 ? "result" : "results"}
       </Text>
     ) : null
@@ -233,20 +238,20 @@ export function ForYouSearch({
       {recent.length > 0 ? (
         <View className="pt-3">
           <View className="flex-row items-center justify-between px-4 pb-1">
-            <Text className="text-[12px] font-semibold uppercase tracking-wide text-white/45">{t("foryou.recent")}</Text>
+            <Text className="text-[12px] font-semibold uppercase tracking-wide text-muted">{t("foryou.recent")}</Text>
             <Pressable
               onPress={() => {
                 writeRecent([]);
                 setRecent([]);
               }}
             >
-              <Text className="text-[12px] font-semibold text-white/60">{t("foryou.clear")}</Text>
+              <Text className="text-[12px] font-semibold text-muted">{t("foryou.clear")}</Text>
             </Pressable>
           </View>
           {recent.map((r) => (
-            <Pressable key={r} onPress={() => setQuery(r)} className="flex-row items-center gap-3 px-4 py-2.5 active:bg-white/10">
-              <Clock size={16} color="rgba(255,255,255,0.4)" />
-              <Text numberOfLines={1} className="flex-1 text-[14px] text-white/85">
+            <Pressable key={r} onPress={() => setQuery(r)} className="flex-row items-center gap-3 px-4 py-2.5">
+              <Clock size={16} color={colors.muted} />
+              <Text numberOfLines={1} className="flex-1 text-[14px] text-text">
                 {r}
               </Text>
             </Pressable>
@@ -255,7 +260,7 @@ export function ForYouSearch({
       ) : null}
       {popular.length > 0 ? (
         <View className="pt-3">
-          <Text className="px-4 pb-1 text-[12px] font-semibold uppercase tracking-wide text-white/45">{t("foryou.trendingNow")}</Text>
+          <Text className="px-4 pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted">{t("foryou.trendingNow")}</Text>
           {popular.map((item) => (
             <ResultRow key={item.episode_id} item={item} tokens={[]} onPick={pick} />
           ))}
@@ -267,10 +272,10 @@ export function ForYouSearch({
   const empty =
     showResults && !results.length && !loading && settledQuery === q ? (
       <View className="px-8 pt-16">
-        <Text className="text-center text-[15px] font-semibold text-white">
+        <Text className="text-center text-[15px] font-semibold text-text">
           {failed ? t("foryou.searchUnavailable") : t("foryou.noPromosMatch", { q })}
         </Text>
-        <Text className="mt-1.5 text-center text-[13px] text-white/55">
+        <Text className="mt-1.5 text-center text-[13px] text-muted">
           {failed ? t("foryou.checkConnection") : t("foryou.tryDifferent")}
         </Text>
       </View>
@@ -278,16 +283,17 @@ export function ForYouSearch({
 
   return (
     <Modal visible={open} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <StatusBar style="auto" />
         <View
           className="flex-row items-center gap-2 px-3 pb-3"
-          style={{ paddingTop: insets.top + 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+          style={{ paddingTop: insets.top + 12, borderBottomWidth: 1, borderBottomColor: colors.border }}
         >
           <Pressable onPress={onClose} accessibilityLabel={t("foryou.closeSearch")} hitSlop={8} className="h-9 w-9 items-center justify-center">
-            <ArrowLeft size={22} color="#fff" />
+            <ArrowLeft size={22} color={colors.text} />
           </Pressable>
-          <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-full px-3.5" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-            <Search size={16} color="rgba(255,255,255,0.55)" />
+          <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-full px-3.5" style={{ backgroundColor: colors["surface-raised"] }}>
+            <Search size={16} color={colors.muted} />
             <TextInput
               ref={inputRef}
               value={query}
@@ -300,8 +306,8 @@ export function ForYouSearch({
               autoCorrect={false}
               autoCapitalize="none"
               placeholder={t("foryou.searchPlaceholder")}
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              style={{ flex: 1, color: "#fff", fontSize: 15, padding: 0 }}
+              placeholderTextColor={colors.muted}
+              style={{ flex: 1, color: colors.text, fontSize: 15, padding: 0 }}
             />
             {query ? (
               <Pressable
@@ -311,9 +317,9 @@ export function ForYouSearch({
                 }}
                 accessibilityLabel={t("foryou.clear")}
                 className="h-5 w-5 items-center justify-center rounded-full"
-                style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+                style={{ backgroundColor: colors.muted }}
               >
-                <X size={12} color="#000" strokeWidth={3} />
+                <X size={12} color={colors.bg} strokeWidth={3} />
               </Pressable>
             ) : null}
           </View>
