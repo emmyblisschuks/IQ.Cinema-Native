@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Text } from "@/components/ui/Text";
 import { getLocalUri } from "@/lib/offline";
@@ -11,6 +11,11 @@ function Player({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => {
     p.play();
   });
+  // Stop picture and sound when another screen is pushed over this one.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) player.pause();
+  }, [isFocused, player]);
   return (
     <VideoView
       player={player}

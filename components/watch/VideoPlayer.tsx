@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { useIsFocused } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Play, Pause, RotateCcw, RotateCw } from "lucide-react-native";
 import { Text } from "@/components/ui/Text";
@@ -125,6 +126,24 @@ export function VideoPlayer({
   const durationRef = useRef(0);
   const lastTick = useRef({ t: -1, at: 0 });
 
+  // A screen pushed on top (login, another page…) keeps this one mounted, so
+  // its player would keep playing — audio included. Pause whenever this
+  // screen isn't the focused one, and resume only if it was playing.
+  const isFocused = useIsFocused();
+  const focusedRef = useRef(isFocused);
+  focusedRef.current = isFocused;
+  const resumeOnFocusRef = useRef(false);
+  useEffect(() => {
+    if (!isFocused) {
+      resumeOnFocusRef.current = player.playing || resumeOnFocusRef.current;
+      player.pause();
+    } else if (resumeOnFocusRef.current) {
+      resumeOnFocusRef.current = false;
+      player.play();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused, player]);
+
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(true);
   const [showControls, setShowControls] = useState(true);
@@ -167,7 +186,10 @@ export function VideoPlayer({
     currentSrc.current = src;
     setBuffering(true);
     player.replaceAsync(src).then(() => {
-      if (autoPlay) player.play();
+      // Don't start playing if the viewer already left this screen while the
+      // source was loading.
+      if (autoPlay && focusedRef.current) player.play();
+      else if (autoPlay) resumeOnFocusRef.current = true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, player]);
