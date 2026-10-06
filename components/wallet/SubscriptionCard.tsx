@@ -28,7 +28,7 @@ export function SubscriptionCard({
   const price = showIntro ? plan.intro_price_naira! : plan.price_naira;
 
   return (
-    <View className={clsx("relative rounded-lg border p-4", highlighted ? "border-gold bg-gold-soft" : "border-border bg-surface")}>
+    <View className={clsx("relative rounded-lg border p-4", highlighted ? "border-pink bg-crimson-soft" : "border-border bg-surface")}>
       {plan.badge ? (
         <View className="absolute right-3 rounded-full bg-crimson px-2.5 py-0.5" style={{ top: -10 }}>
           <Text className="text-[10px] font-bold text-white">{plan.badge}</Text>
@@ -38,7 +38,7 @@ export function SubscriptionCard({
       {plan.description ? <Text className="mt-1 text-[13px] text-muted">{plan.description}</Text> : null}
 
       <View className="mt-2.5 flex-row items-baseline gap-2">
-        <Text className="font-display text-[22px] font-semibold text-gold">{`₦${price.toLocaleString()}`}</Text>
+        <Text className="font-display text-[22px] font-semibold text-pink">{`₦${price.toLocaleString()}`}</Text>
         {showIntro ? (
           <Text className="text-[13px] font-medium text-muted" style={{ textDecorationLine: "line-through" }}>
             {`₦${plan.price_naira.toLocaleString()}`}
@@ -63,7 +63,7 @@ export function SubscriptionCard({
         </View>
       ) : null}
 
-      <Button className="mt-3.5 w-full" variant={highlighted ? "gold" : "secondary"} disabled={loading} onPress={() => onSubscribe(plan.id)}>
+      <Button className="mt-3.5 w-full" variant={highlighted ? "primary" : "secondary"} disabled={loading} onPress={() => onSubscribe(plan.id)}>
         {loading ? t("wallet.starting") : t("wallet.subscribe")}
       </Button>
     </View>

@@ -17,6 +17,7 @@ import { FadeIn } from "@/components/ui/FadeIn";
 import { Pop } from "@/components/ui/Pop";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
+import { BrandGradient } from "@/components/ui/BrandGradient";
 
 const TIP_KEYS = ["wallet.tip1", "wallet.tip2", "wallet.tip3", "wallet.tip4", "wallet.tip5", "wallet.tip6"];
 
@@ -91,9 +92,10 @@ export default function WalletPage() {
           ) : null}
 
           {!loading && state.membership.active ? (
-            <View className="mt-4 rounded-lg border border-gold bg-gold-soft px-4 py-3">
-              <Text className="text-[13px] font-semibold text-text">👑 {t("wallet.planActive", { plan: state.membership.plan_name ?? "" })}</Text>
-              <Text className="mt-0.5 text-[12px] text-muted">
+            <View className="mt-4 overflow-hidden rounded-lg px-4 py-3">
+              <BrandGradient radius={12} />
+              <Text className="text-[13px] font-semibold" style={{ color: "#fff" }}>👑 {t("wallet.planActive", { plan: state.membership.plan_name ?? "" })}</Text>
+              <Text className="mt-0.5 text-[12px]" style={{ color: "rgba(255,255,255,0.85)" }}>
                 {t(state.membership.auto_renew ? "wallet.renewsOn" : "wallet.endsOn", {
                   date: new Date(state.membership.ends_at!).toLocaleDateString(lang),
                 })}

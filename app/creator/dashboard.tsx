@@ -108,7 +108,7 @@ export default function CreatorDashboardPage() {
           <Text className="font-display mt-7 mb-2.5 text-[17px] font-semibold text-text">{t("creator.yourTitles")}</Text>
           <View className="overflow-hidden rounded-md border border-border bg-surface">
             {titles.map((row, i) => (
-              <Pressable key={row.id} onPress={() => openWeb(`/creator/title/${row.id}`)} className={`flex-row items-center justify-between px-4 py-3 active:bg-surface-raised ${i>0?"border-t border-border":""}`}>
+              <Pressable key={row.id} onPress={() => router.push(`/creator/title/${row.id}` as never)} className={`flex-row items-center justify-between px-4 py-3 active:bg-surface-raised ${i>0?"border-t border-border":""}`}>
                 <View>
                   <Text className="text-[14px] font-medium text-text">{row.title}</Text>
                   <Text className="mt-0.5 text-[12px] text-muted">{STATUS_KEYS[row.status]?t(STATUS_KEYS[row.status]):row.status}{row.genre?` · ${row.genre}`:""}</Text>

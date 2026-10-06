@@ -125,7 +125,7 @@ export default function WatchPage() {
       <View className="flex-1 items-center justify-center gap-4 bg-black px-6">
         <Text className="font-display text-lg text-white">Couldn't load this episode</Text>
         <Text className="text-center text-sm text-white/60">Check your connection and try again.</Text>
-        <Button variant="gold" onPress={() => setAttempt((n) => n + 1)}>Try again</Button>
+        <Button onPress={() => setAttempt((n) => n + 1)}>Try again</Button>
       </View>
     );
   }

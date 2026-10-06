@@ -51,7 +51,7 @@ export function HeroBanner({
         <Scrim from={0.85} via={0.05} />
         <View className="absolute inset-x-0 bottom-0 p-3">
           {featured.genre_label ? (
-            <Text className="text-[11px] font-medium uppercase tracking-wide text-gold">
+            <Text className="text-[11px] font-medium uppercase tracking-wide text-pink">
               {featured.genre_label}
             </Text>
           ) : null}

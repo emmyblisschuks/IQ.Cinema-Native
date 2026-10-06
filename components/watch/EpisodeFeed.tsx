@@ -427,7 +427,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
       <View className="flex-1 items-center justify-center gap-4 bg-black px-10">
         <Text className="font-display text-center text-[20px] font-semibold text-white">Couldn't load this episode</Text>
         <Text className="text-center text-[14px] text-white/70">Check your connection and try again.</Text>
-        <Button variant="gold" size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
+        <Button size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
           Try again
         </Button>
         <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
@@ -456,7 +456,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
           Unlock this episode for {cost} coins to keep watching.
         </Text>
         {unlockError ? <Text className="text-center text-[13px] text-crimson">{unlockError}</Text> : null}
-        <Button variant="gold" size="lg" className="w-full" disabled={unlocking} onPress={handleUnlock}>
+        <Button size="lg" className="w-full" disabled={unlocking} onPress={handleUnlock}>
           {unlocking ? "Unlocking…" : `Unlock for ${cost} coins`}
         </Button>
         <Button variant="ghost" onPress={() => router.push("/wallet" as never)}>
@@ -473,7 +473,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-black px-10">
         <Text className="text-center text-[15px] text-white/80">{videoError}</Text>
-        <Button variant="gold" size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
+        <Button size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
           Try again
         </Button>
         <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>

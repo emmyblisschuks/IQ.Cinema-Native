@@ -7,16 +7,15 @@ import clsx from "clsx";
 import { Text } from "@/components/ui/Text";
 import { IconToneContext, type Tone } from "@/components/ui/Icon";
 
-type Variant = "primary" | "secondary" | "ghost" | "gold" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg" | "icon";
 
 // Same brand treatments as the web Button: pink → crimson gradient primary,
-// solid gold, solid crimson for consequential actions.
+// solid crimson for consequential actions.
 const variants: Record<Variant, { box: string; text: string; tone: Tone | string }> = {
   primary: { box: "", text: "text-white", tone: "white" },
   secondary: { box: "border border-border bg-surface-raised", text: "text-text", tone: "text" },
   ghost: { box: "bg-transparent", text: "text-text", tone: "text" },
-  gold: { box: "bg-gold", text: "text-[rgb(20,16,8)]", tone: "rgb(20,16,8)" },
   danger: { box: "bg-crimson", text: "text-white", tone: "white" },
 };
 
@@ -29,7 +28,6 @@ const sizes: Record<Size, { box: string; text: string }> = {
 
 const glow = {
   primary: { shadowColor: "rgb(255,42,105)", shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
-  gold: { shadowColor: "rgb(180,128,58)", shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   danger: { shadowColor: "rgb(150,45,40)", shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
 } as const;
 

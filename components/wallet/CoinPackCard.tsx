@@ -27,7 +27,7 @@ export function CoinPackCard({
       onPress={() => onBuy(pack.id)}
       className={clsx(
         "relative w-full overflow-hidden rounded-lg border px-3.5 py-3",
-        highlighted ? "border-gold bg-gold-soft" : "border-border bg-surface"
+        highlighted ? "border-pink bg-crimson-soft" : "border-border bg-surface"
       )}
       style={({ pressed }) => ({ opacity: loading ? 0.6 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] })}
     >

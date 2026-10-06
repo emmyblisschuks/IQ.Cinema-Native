@@ -12,10 +12,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Film, ImagePlus, Plus, Video } from "lucide-react-native";
+import { ArrowLeft, Film, FolderOpen, ImagePlus, Images, Plus, Trash2 } from "lucide-react-native";
+import { File as FSFile } from "expo-file-system";
 import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVideoResumable, type ResumableUpload } from "@/lib/supabase/resumableUpload";
+import { readMp4Info } from "@/lib/mp4Info";
+import { canGenerateStoryboard, generateStoryboardNative } from "@/lib/storyboardNative";
+import { STORYBOARD_BUCKET, storyboardPath, uploadStoryboard } from "@/lib/storyboard";
+import { BottomSheet } from "@/components/shared/BottomSheet";
 import { CATEGORIES, DEFAULT_CATEGORY, type Category } from "@/lib/categories";
 import { CONTENT_RATINGS, type ContentRating } from "@/lib/contentRatings";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,8 +45,8 @@ const ASPECT_TARGET = 9 / 16;
 const ASPECT_TOLERANCE = 0.02;
 
 type TitleRow = { id: string; title: string; status: string; content_type: ContentType; poster_url: string | null };
-type EpisodeRow = { id: string; episode_number: number; name: string | null; status: string };
-type PickedVideo = { uri: string; duration: number; width: number; height: number; fileName?: string | null };
+type EpisodeRow = { id: string; episode_number: number; name: string | null; status: string; video_url: string | null; is_promo: boolean };
+type PickedVideo = { uri: string; duration: number; width: number; height: number; size: number; fastStart: boolean | null };
 
 function slugify(s: string) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -51,6 +56,10 @@ function uuid() {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
+}
+function formatBytes(b: number) {
+  const mb = b / (1024 * 1024);
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.max(1, Math.round(mb))} MB`;
 }
 function formatSeconds(s: number) {
   const m = Math.floor(s / 60);
@@ -73,7 +82,7 @@ export default function UploadScreen() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { online } = useOnlineStatus();
-  const { titleId: titleIdParam } = useLocalSearchParams<{ titleId?: string }>();
+  const { titleId: titleIdParam, promo: promoParam, episodeId: episodeIdParam } = useLocalSearchParams<{ titleId?: string; promo?: string; episodeId?: string }>();
 
   const [titleId, setTitleId] = useState<string | null>(titleIdParam ?? null);
   const [myTitles, setMyTitles] = useState<TitleRow[] | null>(null);
@@ -96,6 +105,14 @@ export default function UploadScreen() {
   const [episodeName, setEpisodeName] = useState("");
   const [video, setVideo] = useState<PickedVideo | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [checkingVideo, setCheckingVideo] = useState(false);
+  const [episodeRowId, setEpisodeRowId] = useState<string | null>(null); // editing an existing row
+  const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
+  const [existingStatus, setExistingStatus] = useState<string | null>(null);
+  const [isPromoMode, setIsPromoMode] = useState(promoParam === "1");
+  const [buildingPreview, setBuildingPreview] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [saving, setSaving] = useState<"draft" | "submit" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,16 +141,23 @@ export default function UploadScreen() {
   const loadTitle = useCallback(async (id: string) => {
     const [{ data: ti }, { data: eps }] = await Promise.all([
       supabase.from("titles").select("id, title, status, content_type, poster_url").eq("id", id).single(),
-      supabase.from("episodes").select("id, episode_number, name, status").eq("title_id", id).order("episode_number", { ascending: false }),
+      supabase.from("episodes").select("id, episode_number, name, status, video_url, is_promo").eq("title_id", id).order("episode_number", { ascending: false }),
     ]);
     if (ti) setTitle(ti as TitleRow);
-    const list = (eps as EpisodeRow[]) ?? [];
+    const list = ((eps as EpisodeRow[]) ?? []);
     setUnits(list);
     setEpisodeNumber(String(list.reduce((m, e) => Math.max(m, e.episode_number), 0) + 1));
+    return list;
   }, []);
 
   useEffect(() => {
-    if (titleId) void loadTitle(titleId);
+    if (!titleId) return;
+    loadTitle(titleId).then((list) => {
+      // Arrived from the title page on a specific episode → open it for editing.
+      const target = episodeIdParam ? list?.find((u) => u.id === episodeIdParam) : null;
+      if (target) editUnit(target);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleId, loadTitle]);
 
   useEffect(() => () => activeUpload.current?.abort(), []);
@@ -145,26 +169,62 @@ export default function UploadScreen() {
     setPoster({ uri: a.uri, mime: a.mimeType ?? "image/jpeg" });
   }
 
-  async function pickVideo() {
+  // Reads the real duration / size / layout from the file's own MP4 boxes, so
+  // the checks don't rely on what a given phone's picker reports.
+  async function inspect(uri: string, pickerMeta?: { duration?: number | null; width?: number; height?: number }) {
+    setCheckingVideo(true);
     setVideoError(null);
     setNotice(null);
+    try {
+      const info = await readMp4Info(uri);
+      const duration = info.duration ?? (pickerMeta?.duration ? pickerMeta.duration / 1000 : 0);
+      const width = info.width ?? pickerMeta?.width ?? 0;
+      const height = info.height ?? pickerMeta?.height ?? 0;
+      if (!duration || !width || !height) {
+        setVideo(null);
+        setVideoError(t("upload.err.readVideo"));
+        return;
+      }
+      const picked: PickedVideo = { uri, duration, width, height, size: info.size, fastStart: info.fastStart };
+      setVideo(picked);
+      if (duration > config.maxSeconds + 1) {
+        setVideoError(t("upload.err.tooLong", { label: t(config.labelKey), max: config.maxLabel, len: formatSeconds(duration) }));
+      } else if (Math.abs(width / height - ASPECT_TARGET) > ASPECT_TOLERANCE) {
+        setVideoError(t("upload.err.notPortrait", { w: width, h: height }));
+      }
+    } finally {
+      setCheckingVideo(false);
+    }
+  }
+
+  async function pickFromGallery() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted && perm.accessPrivileges !== "limited") {
       setVideoError(t("upload.permission"));
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["videos"], allowsEditing: false, quality: 1, videoExportPreset: ImagePicker.VideoExportPreset.Passthrough });
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["videos"],
+      allowsEditing: false, // editing would trim and re-encode the video
+      quality: 1,
+      videoExportPreset: ImagePicker.VideoExportPreset.Passthrough, // iOS: keep the original encoding
+    });
     if (res.canceled || !res.assets[0]) return;
     const a = res.assets[0];
-    // expo-image-picker reports duration in milliseconds.
-    const duration = (a.duration ?? 0) / 1000;
-    const picked: PickedVideo = { uri: a.uri, duration, width: a.width ?? 0, height: a.height ?? 0, fileName: a.fileName };
-    setVideo(picked);
-    const cfg = config;
-    if (duration > cfg.maxSeconds + 1) {
-      setVideoError(t("upload.err.tooLong", { label: t(cfg.labelKey), max: cfg.maxLabel, len: formatSeconds(duration) }));
-    } else if (picked.height > 0 && Math.abs(picked.width / picked.height - ASPECT_TARGET) > ASPECT_TOLERANCE) {
-      setVideoError(t("upload.err.notPortrait", { w: picked.width, h: picked.height }));
+    await inspect(a.uri, { duration: a.duration, width: a.width, height: a.height });
+  }
+
+  // The file picker hands back the original bytes untouched.
+  async function pickFromFiles() {
+    try {
+      const picked = await FSFile.pickFileAsync(undefined, "video/*");
+      const f = Array.isArray(picked) ? picked[0] : picked;
+      if (!f) return;
+      await inspect(f.uri);
+    } catch (e) {
+      const msg = String((e as Error)?.message ?? e).toLowerCase();
+      if (msg.includes("cancel")) return;
+      setVideoError(t("upload.err.readVideo"));
     }
   }
 
@@ -217,17 +277,47 @@ export default function UploadScreen() {
     setTitleId(row.id);
   }
 
+  function resetForNextUnit(list?: EpisodeRow[]) {
+    const src = list ?? units;
+    setEpisodeRowId(null);
+    setExistingVideoUrl(null);
+    setExistingStatus(null);
+    setEpisodeName("");
+    setVideo(null);
+    setVideoError(null);
+    setIsPromoMode(false);
+    setEpisodeNumber(String(src.reduce((m, e) => Math.max(m, e.episode_number), 0) + 1));
+  }
+
+  function editUnit(u: EpisodeRow) {
+    if (busy) return;
+    setEpisodeRowId(u.id);
+    setEpisodeNumber(String(u.episode_number));
+    setEpisodeName(u.name ?? "");
+    setExistingVideoUrl(u.video_url);
+    setExistingStatus(u.status);
+    setIsPromoMode(u.is_promo && u.episode_number === 0);
+    setVideo(null);
+    setVideoError(null);
+    setNotice(null);
+    setError(null);
+  }
+
   async function saveEpisode(target: "draft" | "processing") {
     if (!user || !titleId) return;
     if (!online) return setError(t("upload.offline"));
-    if (target === "processing" && !video) return setError(t(`upload.err.addVideo.${unit}`));
+    if (checkingVideo) return setError(t("upload.err.stillChecking"));
+    if (target === "processing" && !video && !existingVideoUrl) return setError(t(`upload.err.addVideo.${unit}`));
     if (video && videoError) return setError(videoError);
 
     setSaving(target === "draft" ? "draft" : "submit");
     setError(null);
     setNotice(null);
 
-    let videoPath: string | null = null;
+    let videoPath: string | null = existingVideoUrl;
+    const oldVideoPath = existingVideoUrl;
+    const isReplacing = !!video && !!oldVideoPath;
+
     if (video) {
       const path = `${user.id}/${titleId}/${uuid()}.mp4`;
       setProgress(0);
@@ -246,33 +336,84 @@ export default function UploadScreen() {
       }
       setProgress(null);
       videoPath = path;
+
+      // Scrub-preview strip, built from the LOCAL file and stored as one small
+      // image so viewers scrub against it instead of the video. Best-effort —
+      // the episode saves without it.
+      if (canGenerateStoryboard()) {
+        setBuildingPreview(0);
+        try {
+          const strip = await generateStoryboardNative(video.uri, video.duration, setBuildingPreview);
+          await uploadStoryboard(supabase, path, strip);
+        } catch {
+          /* non-fatal: the player falls back to a plain scrub box */
+        } finally {
+          setBuildingPreview(null);
+        }
+      }
     }
 
-    const { data: row, error: epErr } = await supabase
-      .from("episodes")
-      .insert({
-        title_id: titleId,
-        episode_number: parseInt(episodeNumber, 10) || 1,
-        name: episodeName.trim() || null,
-        video_url: videoPath,
-        duration_seconds: video ? Math.round(video.duration) : undefined,
-        video_width: video ? video.width : undefined,
-        video_height: video ? video.height : undefined,
-        status: target,
-      })
-      .select("id, episode_number, name, status")
-      .single();
+    const payload = {
+      title_id: titleId,
+      episode_number: isPromoMode ? 0 : parseInt(episodeNumber, 10) || 1,
+      name: episodeName.trim() || null,
+      video_url: videoPath,
+      duration_seconds: video ? Math.round(video.duration) : undefined,
+      video_width: video ? video.width : undefined,
+      video_height: video ? video.height : undefined,
+      status: target,
+    };
+    const { data: row, error: epErr } = episodeRowId
+      ? await supabase.from("episodes").update(payload).eq("id", episodeRowId).select("id, episode_number, name, status, video_url, is_promo").single()
+      : await supabase.from("episodes").insert(payload).select("id, episode_number, name, status, video_url, is_promo").single();
     setSaving(null);
     if (epErr || !row) {
       setError(epErr?.message ?? t("upload.err.uploadFailed"));
       return;
     }
-    setUnits((prev) => [row as EpisodeRow, ...prev]);
-    setEpisodeNumber(String((row as EpisodeRow).episode_number + 1));
-    setEpisodeName("");
-    setVideo(null);
-    setVideoError(null);
+
+    // A replaced video leaves the old storage object orphaned: clean it up now
+    // that the row points at the new one. Best-effort.
+    if (isReplacing && oldVideoPath && oldVideoPath !== videoPath) {
+      supabase.storage.from("videos").remove([oldVideoPath]).then(() => {}, () => {});
+      supabase.storage.from(STORYBOARD_BUCKET).remove([storyboardPath(oldVideoPath)]).then(() => {}, () => {});
+    }
+
+    const saved = row as EpisodeRow;
+    if (isPromoMode) {
+      const { data: promoResult, error: promoErr } = await supabase.rpc("set_promo_episode", { p_title_id: titleId, p_episode_id: saved.id });
+      if (promoErr || !promoResult?.ok) setError(promoErr?.message || promoResult?.error || t("upload.err.promoFailed"));
+    }
+
+    const next = [saved, ...units.filter((u) => u.id !== saved.id)].sort((a, b) => b.episode_number - a.episode_number);
+    setUnits(next);
     setNotice(target === "draft" ? t("upload.savedDraft") : t("upload.finalized"));
+    // Stay on the saved row (a later Finalize must not re-upload the same
+    // file): the picked file is cleared, the saved path carries forward.
+    setEpisodeRowId(saved.id);
+    setExistingVideoUrl(saved.video_url);
+    setExistingStatus(saved.status);
+    setVideo(null);
+  }
+
+  async function deleteEpisode(id: string) {
+    setDeleting(true);
+    setError(null);
+    const target = units.find((u) => u.id === id);
+    const { error: delErr } = await supabase.from("episodes").delete().eq("id", id);
+    setDeleting(false);
+    if (delErr) {
+      setError(delErr.message);
+      return;
+    }
+    if (target?.video_url) {
+      supabase.storage.from("videos").remove([target.video_url]).then(() => {}, () => {});
+      supabase.storage.from(STORYBOARD_BUCKET).remove([storyboardPath(target.video_url)]).then(() => {}, () => {});
+    }
+    const next = units.filter((u) => u.id !== id);
+    setUnits(next);
+    setConfirmDeleteId(null);
+    if (episodeRowId === id) resetForNextUnit(next);
   }
 
   const busy = saving !== null;
@@ -395,27 +536,50 @@ export default function UploadScreen() {
               </View>
             ) : null}
 
-            {/* ── Step 2: add an episode ──────────────────────────────── */}
+            {/* ── Step 2: add / edit an episode ───────────────────────── */}
             {titleId && title ? (
               <View className="mt-5 gap-4">
                 <Text className="text-[12px] text-muted">{t(`upload.limits.${unit}`, { label: t(config.labelKey), max: config.maxLabel })}</Text>
 
-                <View>
-                  <Text className="mb-1.5 text-[13px] font-semibold text-muted">{t(`upload.unitNumber.${unit}`)}</Text>
-                  <Input value={episodeNumber} onChangeText={(v) => setEpisodeNumber(v.replace(/[^0-9]/g, ""))} keyboardType="number-pad" />
-                </View>
+                {isPromoMode ? (
+                  <View className="rounded-md bg-surface-raised px-3 py-2.5">
+                    <Text className="text-[12.5px] font-semibold text-text">{t("upload.promoClip")}</Text>
+                    <Text className="mt-0.5 text-[12px] text-muted">{t(`upload.promoNotNumbered.${unit}`)}</Text>
+                  </View>
+                ) : (
+                  <View>
+                    <Text className="mb-1.5 text-[13px] font-semibold text-muted">{t(`upload.unitNumber.${unit}`)}</Text>
+                    <Input value={episodeNumber} onChangeText={(v) => setEpisodeNumber(v.replace(/[^0-9]/g, ""))} keyboardType="number-pad" />
+                  </View>
+                )}
                 <Input value={episodeName} onChangeText={setEpisodeName} placeholder={t(`upload.unitName.${unit}`)} />
 
-                <Pressable onPress={pickVideo} disabled={busy} className="flex-row items-center gap-3 rounded-lg border border-dashed border-border bg-surface p-4" style={{ opacity: busy ? 0.6 : 1 }}>
-                  <Icon as={Video} size={22} tone="pink" />
-                  <View className="min-w-0 flex-1">
-                    <Text className="text-[14px] font-medium text-text">{video ? t("upload.changeVideo") : t("upload.pickVideo")}</Text>
-                    <Text className="mt-0.5 text-[12px] text-muted">
-                      {video ? `${formatSeconds(video.duration)} · ${video.width}x${video.height}${videoError ? "" : " ✓"}` : t("upload.noVideo")}
-                    </Text>
+                <View>
+                  <Text className="mb-2 text-[13px] font-semibold text-muted">{t("upload.videoFile")}</Text>
+                  <View className="flex-row gap-3">
+                    <Pressable onPress={pickFromGallery} disabled={busy || checkingVideo} className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface py-3.5" style={{ opacity: busy ? 0.6 : 1 }}>
+                      <Icon as={Images} size={18} tone="pink" />
+                      <Text className="text-[13.5px] font-medium text-text">{t("upload.fromGallery")}</Text>
+                    </Pressable>
+                    <Pressable onPress={pickFromFiles} disabled={busy || checkingVideo} className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface py-3.5" style={{ opacity: busy ? 0.6 : 1 }}>
+                      <Icon as={FolderOpen} size={18} tone="pink" />
+                      <Text className="text-[13.5px] font-medium text-text">{t("upload.fromFiles")}</Text>
+                    </Pressable>
                   </View>
-                </Pressable>
-                {videoError ? <Text className="-mt-2 text-[12.5px] text-crimson">{videoError}</Text> : null}
+                  <Text className="mt-2 text-[12px] text-muted">
+                    {checkingVideo
+                      ? t("upload.checkingVideo")
+                      : video
+                        ? `${formatSeconds(video.duration)} · ${video.width}x${video.height} · ${formatBytes(video.size)}${videoError ? "" : " ✓"}${existingVideoUrl ? t("upload.willReplace") : ""}`
+                        : existingVideoUrl
+                          ? t("upload.videoAttached")
+                          : t("upload.noVideo")}
+                  </Text>
+                  {videoError ? <Text className="mt-1 text-[12.5px] text-crimson">{videoError}</Text> : null}
+                  {video && !videoError && video.fastStart === false ? (
+                    <Text className="mt-1 text-[12.5px]" style={{ color: colors.pink }}>{t("upload.warn.fastStart")}</Text>
+                  ) : null}
+                </View>
 
                 {progress !== null ? (
                   <View>
@@ -425,30 +589,56 @@ export default function UploadScreen() {
                     <Text className="mt-1.5 text-[12px] text-muted">{t("upload.uploadingHint", { pct: Math.round(progress * 100) })}</Text>
                   </View>
                 ) : null}
+                {buildingPreview !== null ? (
+                  <Text className="text-[12px] text-muted">{t("upload.buildingPct", { pct: Math.round(buildingPreview * 100) })}</Text>
+                ) : null}
 
                 <View className="flex-row gap-3">
-                  <Button variant="secondary" className="flex-1" disabled={busy || !!videoError} onPress={() => saveEpisode("draft")}>
+                  <Button variant="secondary" className="flex-1" disabled={busy || checkingVideo || !!videoError} onPress={() => saveEpisode("draft")}>
                     {saving === "draft" ? (progress !== null ? t("upload.uploadingPct", { pct: Math.round(progress * 100) }) : t("upload.saving")) : t("upload.saveDraft")}
                   </Button>
-                  <Button className="flex-1" disabled={busy || !video || !!videoError} onPress={() => saveEpisode("processing")}>
+                  <Button className="flex-1" disabled={busy || checkingVideo || (!video && !existingVideoUrl) || !!videoError} onPress={() => saveEpisode("processing")}>
                     {saving === "submit" ? (progress !== null ? t("upload.uploadingPct", { pct: Math.round(progress * 100) }) : t("upload.finalizing")) : t("upload.finalize")}
                   </Button>
                 </View>
                 <Text className="text-[11.5px] leading-relaxed text-muted">{t(`upload.footer.${unit}`)}</Text>
+
+                <View className="flex-row flex-wrap gap-x-5 gap-y-2">
+                  {episodeRowId ? (
+                    <Pressable onPress={() => { resetForNextUnit(); setNotice(null); }} disabled={busy}>
+                      <Text className="text-[13px] font-semibold text-pink">{t(`upload.addAnother.${unit}`)}</Text>
+                    </Pressable>
+                  ) : null}
+                  {!episodeRowId && !isPromoMode ? (
+                    <Pressable onPress={() => setIsPromoMode(true)} disabled={busy}>
+                      <Text className="text-[13px] font-semibold text-pink">{t("upload.promoClip")}</Text>
+                    </Pressable>
+                  ) : null}
+                  {episodeRowId ? (
+                    <Pressable onPress={() => setConfirmDeleteId(episodeRowId)} disabled={busy} className="flex-row items-center gap-1.5">
+                      <Icon as={Trash2} size={14} tone="crimson" />
+                      <Text className="text-[13px] font-semibold text-crimson">{t(`upload.deleteUnit.${unit}`)}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
 
                 {units.length > 0 ? (
                   <View className="mt-2">
                     <Text className="mb-2 text-[14px] font-semibold text-text">{t(`upload.inProject.${unit}`)}</Text>
                     <View className="gap-2">
                       {units.map((u) => (
-                        <View key={u.id} className="flex-row items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5">
+                        <Pressable
+                          key={u.id}
+                          onPress={() => editUnit(u)}
+                          className={clsx("flex-row items-center gap-3 rounded-lg border bg-surface px-3 py-2.5", episodeRowId === u.id ? "border-pink" : "border-border")}
+                        >
                           <Icon as={Film} size={16} tone="muted" />
                           <Text numberOfLines={1} className="flex-1 text-[13.5px] text-text">
-                            {unit === "part" ? t("upload.partN", { n: u.episode_number }) : `EP ${u.episode_number}`}
+                            {u.is_promo && u.episode_number === 0 ? t("upload.promoClip") : unit === "part" ? t("upload.partN", { n: u.episode_number }) : `EP ${u.episode_number}`}
                             {u.name ? ` · ${u.name}` : ""}
                           </Text>
                           <Text className="text-[12px] text-muted">{t(`upload.status.${u.status}`)}</Text>
-                        </View>
+                        </Pressable>
                       ))}
                     </View>
                   </View>
@@ -458,6 +648,18 @@ export default function UploadScreen() {
           </FadeIn>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <BottomSheet open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)} title={t(`upload.deleteUnit.${unit}`)}>
+        <View className="px-5 pb-5">
+          <Text className="text-[14px] leading-relaxed text-muted">{t(`upload.deleteConfirm.${unit}`)}</Text>
+          <View className="mt-5 flex-row gap-3">
+            <Button variant="secondary" className="flex-1" onPress={() => setConfirmDeleteId(null)}>{t("common.cancel")}</Button>
+            <Button variant="danger" className="flex-1" disabled={deleting} onPress={() => confirmDeleteId && deleteEpisode(confirmDeleteId)}>
+              {deleting ? t("upload.deleting") : t("upload.confirm")}
+            </Button>
+          </View>
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

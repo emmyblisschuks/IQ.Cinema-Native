@@ -60,7 +60,7 @@ export function TitleCard({ title, size = "md" }: { title: TitleCardData; size?:
             <View className="absolute inset-x-0 bottom-0">
               <Scrim from={0.8} via={0.4} style={{ top: 0 }} />
               <View className="flex-row items-center gap-1 px-1.5 pb-1.5 pt-4">
-                <Icon as={Flame} size={11} tone="gold" fillTone="gold" />
+                <Icon as={Flame} size={11} tone="pink" fillTone="pink" />
                 <Text className="text-[11px] text-white/90">{formatCount(title.total_unique_views)}</Text>
               </View>
             </View>

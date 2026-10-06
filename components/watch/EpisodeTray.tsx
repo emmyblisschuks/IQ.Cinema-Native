@@ -78,7 +78,7 @@ export function EpisodeTray({
               {isCurrent ? (
                 <Icon as={Play} size={11} tone="white" fillTone="white" />
               ) : isUnlocked ? (
-                isPaidUnlocked ? <Icon as={Check} size={11} tone="gold" /> : null
+                isPaidUnlocked ? <Icon as={Check} size={11} tone="pink" /> : null
               ) : (
                 <Icon as={Lock} size={11} tone="muted" />
               )}

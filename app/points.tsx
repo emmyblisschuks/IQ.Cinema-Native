@@ -79,18 +79,18 @@ export default function PointsPage() {
 
           <View className="mt-6 items-center rounded-lg border border-border bg-surface px-4 py-7">
             <Pop active={crackResult !== null} style={{ alignSelf:"center" }}>
-              <View className="h-20 w-20 items-center justify-center rounded-2xl bg-gold-soft">
+              <View className="h-20 w-20 items-center justify-center rounded-2xl bg-crimson-soft">
                 <Text className="text-4xl">{crackResult !== null ? "🎉" : "🎁"}</Text>
               </View>
             </Pop>
             <Text className="font-display mt-3 text-[16px] font-semibold text-text">{crackResult !== null ? t("points.youWon", { n: crackResult }) : t("points.crackTheBox")}</Text>
-            {crackResult === null && !loading && <Text className="mt-1 text-[12.5px] text-gold">{t("points.winUpTo", { n: state.box.max })}</Text>}
+            {crackResult === null && !loading && <Text className="mt-1 text-[12.5px] text-pink">{t("points.winUpTo", { n: state.box.max })}</Text>}
             {!loading && state.box.vip_only && !state.vip ? (
               <Pressable onPress={() => router.push("/wallet" as never)} className="mt-4 w-full max-w-[220px]">
-                <Button variant="gold" className="w-full"><Icon as={Lock} size={14} tone="rgb(20,16,8)" /> {t("points.vipRequired")}</Button>
+                <Button className="w-full"><Icon as={Lock} size={14} tone="white" /> {t("points.vipRequired")}</Button>
               </Pressable>
             ) : (
-              <Button variant="gold" className="mt-4 w-full max-w-[220px]" disabled={cracking || (state?.box.opened_today ?? true) || loading} onPress={crack}>
+              <Button className="mt-4 w-full max-w-[220px]" disabled={cracking || (state?.box.opened_today ?? true) || loading} onPress={crack}>
                 {loading ? "…" : state.box.opened_today ? t("points.openedToday", { n: state.box.points_today ?? 0 }) : cracking ? t("points.opening") : t("points.unlockNow")}
               </Button>
             )}
