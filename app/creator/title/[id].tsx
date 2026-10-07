@@ -15,6 +15,7 @@ import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES, DEFAULT_CATEGORY, type Category } from "@/lib/categories";
 import { CONTENT_RATINGS, type ContentRating } from "@/lib/contentRatings";
+import { kindOf } from "@/lib/contentTypes";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -30,7 +31,7 @@ const supabase = createClient();
 type TitleStatus = "draft" | "in_review" | "published" | "coming_soon" | "suspended" | "rejected" | "withdrawn";
 type TitleRow = {
   id: string; title: string; slug: string; synopsis: string | null; genre: string | null; category: string | null;
-  content_rating: ContentRating | null; poster_url: string | null; content_type: string; status: TitleStatus;
+  content_rating: ContentRating | null; poster_url: string | null; content_type: string; status: TitleStatus; credit_name: string | null;
   creator_id: string; admin_review_note: string | null; review_ignored_at: string | null; total_unique_views: number;
 };
 type EpisodeRow = { id: string; episode_number: number; name: string | null; status: "draft" | "processing" | "published" | "suspended"; video_url: string | null; is_promo: boolean };
@@ -81,6 +82,7 @@ export default function ManageTitleScreen() {
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editCategory, setEditCategory] = useState<Category>(DEFAULT_CATEGORY);
   const [editRating, setEditRating] = useState<ContentRating>("13+");
+  const [editCredit, setEditCredit] = useState("");
   const [editPoster, setEditPoster] = useState<{ uri: string; mime: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -88,7 +90,7 @@ export default function ManageTitleScreen() {
     const [{ data: ti }, { data: eps }, { data: tagRows }] = await Promise.all([
       supabase
         .from("titles")
-        .select("id, title, slug, synopsis, genre, category, content_rating, poster_url, content_type, status, creator_id, admin_review_note, review_ignored_at, total_unique_views")
+        .select("id, title, slug, synopsis, genre, category, content_rating, poster_url, content_type, status, credit_name, creator_id, admin_review_note, review_ignored_at, total_unique_views")
         .eq("id", id)
         .single(),
       supabase.from("episodes").select("id, episode_number, name, status, video_url, is_promo").eq("title_id", id).order("episode_number", { ascending: true }),
@@ -103,6 +105,7 @@ export default function ManageTitleScreen() {
       setEditTags(((tagRows ?? []) as unknown as { genres: { name: string } | null }[]).map((r) => r.genres?.name).filter((n): n is string => !!n));
       setEditCategory((ti.category as Category) ?? DEFAULT_CATEGORY);
       setEditRating((ti.content_rating as ContentRating) ?? "13+");
+      setEditCredit(ti.credit_name ?? "");
     }
     setLoading(false);
   }, [id]);
@@ -148,6 +151,7 @@ export default function ManageTitleScreen() {
         category: editCategory,
         content_rating: editRating,
         poster_url: posterUrl,
+        ...(kindOf(title.content_type).creditLabelKey ? { credit_name: editCredit.trim() || null } : {}),
       })
       .eq("id", title.id);
     if (updErr) {
@@ -213,7 +217,7 @@ export default function ManageTitleScreen() {
     );
   }
 
-  const isPart = title.content_type === "one_part_film";
+  const isPart = !kindOf(title.content_type).multi;
   const unit = isPart ? "part" : "episode";
   const unitN = (n: number) => t(isPart ? "upload.partN" : "common.episodeN", { n });
   const numbered = episodes.filter((e) => e.episode_number > 0);
@@ -279,6 +283,9 @@ export default function ManageTitleScreen() {
             {editing ? (
               <View className="mt-4 gap-3 rounded-md border border-border bg-surface p-4">
                 <Input value={editTitle} onChangeText={setEditTitle} placeholder={t("upload.titlePlaceholder")} />
+                {kindOf(title.content_type).creditLabelKey ? (
+                  <Input value={editCredit} onChangeText={setEditCredit} placeholder={t(title.content_type === "music_video" ? "wiz.credit.placeholderArtist" : "wiz.credit.placeholderBrand")} />
+                ) : null}
                 <Input value={editSynopsis} onChangeText={setEditSynopsis} placeholder={t("upload.synopsis")} multiline style={{ height: 96, paddingTop: 12, textAlignVertical: "top" }} />
 
                 <View>
@@ -312,7 +319,7 @@ export default function ManageTitleScreen() {
                 <View>
                   <Text className="mb-2 text-[13px] font-semibold text-muted">{t("upload.rating")}</Text>
                   <View className="flex-row flex-wrap gap-2">
-                    {CONTENT_RATINGS.map((r) => <Chip key={r.value} label={r.value} active={editRating === r.value} onPress={() => setEditRating(r.value)} />)}
+                    {CONTENT_RATINGS.map((r) => <Chip key={r.value} label={t(`rating.${r.value}`)} active={editRating === r.value} onPress={() => setEditRating(r.value)} />)}
                   </View>
                 </View>
 

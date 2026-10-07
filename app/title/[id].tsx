@@ -13,6 +13,7 @@ import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
 import { formatEpisodeCount } from "@/lib/format";
+import { kindOf } from "@/lib/contentTypes";
 import { UUID_RE, stripLegacySlugSuffix, titlePath } from "@/lib/links";
 import { rgba } from "@/lib/theme";
 import type { TrayEpisode } from "@/components/watch/EpisodeTray";
@@ -20,7 +21,7 @@ import type { TrayEpisode } from "@/components/watch/EpisodeTray";
 const supabase = createClient();
 
 const TITLE_COLS =
-  "id, slug, title, synopsis, poster_url, banner_url, content_type, content_rating, status, total_unique_views, free_episode_count";
+  "id, slug, title, synopsis, poster_url, banner_url, content_type, content_rating, status, credit_name, total_unique_views, free_episode_count";
 
 type TitleRow = {
   id: string;
@@ -32,6 +33,7 @@ type TitleRow = {
   content_type: string;
   content_rating: string;
   status: string;
+  credit_name: string | null;
   total_unique_views: number;
   free_episode_count: number | null;
 };
@@ -159,8 +161,14 @@ export default function TitlePage() {
             already fades into the page. */}
         <View className="px-4 pb-8 pt-6">
           <Text className="font-display text-[22px] font-semibold leading-tight text-text">{title.title}</Text>
+          {title.credit_name ? <Text className="mt-1 text-[14px] font-medium text-pink">{title.credit_name}</Text> : null}
           <Text className="mt-1 text-[13px] text-muted">
-            {title.content_rating} · {title.status === "coming_soon" ? t("title.comingSoon") : formatEpisodeCount(episodes.length, t)}
+            {title.content_rating} ·{" "}
+            {title.status === "coming_soon"
+              ? t("title.comingSoon")
+              : kindOf(title.content_type).multi
+                ? formatEpisodeCount(episodes.length, t)
+                : t(kindOf(title.content_type).nameKey)}
           </Text>
 
           {title.synopsis ? (
