@@ -42,14 +42,14 @@ export function MoreSheet({
     try {
       await onDownload();
     } catch {
-      setDownloadError("Couldn't start the download. Try again.");
+      setDownloadError(t("watch.downloadStartError"));
     } finally {
       setDownloading(false);
     }
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Playback options">
+    <BottomSheet open={open} onClose={onClose} title={t("watch.playbackOptions")}>
       <View className="gap-1 px-3 pb-2 pt-1">
         <View className="flex-row items-center justify-between rounded-md px-1.5 py-2.5">
           <View className="flex-row items-center gap-2.5">
@@ -70,7 +70,7 @@ export function MoreSheet({
         >
           <View className="flex-row items-center gap-2.5">
             {downloading ? <ActivityIndicator size="small" color={colors.muted} /> : <Icon as={Download} size={18} tone="muted" />}
-            <Text className="text-[14px] font-medium text-text">{downloading ? "Preparing download…" : "Download"}</Text>
+            <Text className="text-[14px] font-medium text-text">{downloading ? t("watch.preparingDownload") : t("watch.download")}</Text>
           </View>
         </Pressable>
         {downloadError ? <Text className="px-1.5 text-[12px] text-crimson">{downloadError}</Text> : null}

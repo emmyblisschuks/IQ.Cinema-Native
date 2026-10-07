@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { SelectDot } from "./SelectDot";
+import { useI18n } from "@/hooks/useI18n";
 
 // Replaces the bottom nav while editing (the library screen hides the nav),
 // the same way most mobile list-editing UIs swap the tab bar for an action bar.
@@ -19,6 +20,7 @@ export function EditBar({
   onToggleAll: () => void;
   onAction: () => void;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const allSelected = total > 0 && selectedCount === total;
 
@@ -27,7 +29,7 @@ export function EditBar({
       <View className="h-16 w-full max-w-md flex-row items-center justify-between gap-3 self-center px-4">
         <Pressable onPress={onToggleAll} className="flex-row items-center gap-2.5">
           <SelectDot selected={allSelected} variant="plain" />
-          <Text className="text-[15px] font-medium text-text">{allSelected ? "Deselect all" : "Select all"}</Text>
+          <Text className="text-[15px] font-medium text-text">{allSelected ? t("common.deselectAll") : t("common.selectAll")}</Text>
         </Pressable>
         <Button variant="danger" size="md" disabled={selectedCount === 0} onPress={onAction}>
           {`${actionLabel}${selectedCount > 0 ? ` (${selectedCount})` : ""}`}

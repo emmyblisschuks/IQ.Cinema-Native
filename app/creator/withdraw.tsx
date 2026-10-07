@@ -32,8 +32,8 @@ export default function WithdrawPage() {
   async function handleSubmit() {
     setSubmitting(true); setError(null);
     const amtNum = Number(amount.replace(/,/g, ""));
-    if (!amtNum || amtNum <= 0) { setError("Enter a valid amount."); setSubmitting(false); return; }
-    if (amtNum > available) { setError("Amount exceeds your available balance."); setSubmitting(false); return; }
+    if (!amtNum || amtNum <= 0) { setError(t("creator.errAmount")); setSubmitting(false); return; }
+    if (amtNum > available) { setError(t("creator.errAmountExceeds")); setSubmitting(false); return; }
     const { error: e } = await supabase.from("withdrawal_requests").insert({ user_id: user!.id, amount_naira: amtNum, account_number: account, bank_code: bankCode });
     setSubmitting(false);
     if (e) { setError(e.message); return; }
@@ -43,9 +43,9 @@ export default function WithdrawPage() {
 
   if (done) return (
     <SafeAreaView edges={["top"]} className="flex-1 items-center justify-center bg-bg px-8">
-      <Text className="font-display text-xl font-semibold text-text">Request submitted</Text>
-      <Text className="mt-2 text-center text-sm text-muted">We'll process your withdrawal within 3–5 business days.</Text>
-      <Button variant="secondary" className="mt-5" onPress={() => router.replace("/creator/dashboard" as never)}>Back to dashboard</Button>
+      <Text className="font-display text-xl font-semibold text-text">{t("creator.requestSubmitted")}</Text>
+      <Text className="mt-2 text-center text-sm text-muted">{t("creator.processDays")}</Text>
+      <Button variant="secondary" className="mt-5" onPress={() => router.replace("/creator/dashboard" as never)}>{t("creator.backToDashboard")}</Button>
     </SafeAreaView>
   );
 
@@ -62,11 +62,11 @@ export default function WithdrawPage() {
             <Text className="mt-1 font-display text-xl font-semibold text-text">₦{available.toLocaleString()}</Text>
           </View>
           <View className="mt-5 gap-3">
-            <Input placeholder="Amount (₦)" keyboardType="numeric" value={amount} onChangeText={setAmount} />
-            <Input placeholder="Account number" keyboardType="numeric" value={account} onChangeText={setAccount} />
-            <Input placeholder="Bank code (e.g. 058)" keyboardType="numeric" value={bankCode} onChangeText={setBankCode} />
+            <Input placeholder={t("creator.amountNaira")} keyboardType="numeric" value={amount} onChangeText={setAmount} />
+            <Input placeholder={t("creator.accountNumber")} keyboardType="numeric" value={account} onChangeText={setAccount} />
+            <Input placeholder={t("creator.bankCode")} keyboardType="numeric" value={bankCode} onChangeText={setBankCode} />
             {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
-            <Button className="w-full" size="lg" disabled={submitting || !amount || !account || !bankCode} onPress={handleSubmit}>{submitting ? "Submitting…" : "Request withdrawal"}</Button>
+            <Button className="w-full" size="lg" disabled={submitting || !amount || !account || !bankCode} onPress={handleSubmit}>{submitting ? t("creator.submitting") : t("creator.requestWithdrawal")}</Button>
           </View>
         </FadeIn>
       </ScrollView>

@@ -28,14 +28,14 @@ import { useI18n } from "@/hooks/useI18n";
 type ReminderTab = "released" | "upcoming";
 
 const REMINDER_OPTIONS = [
-  { value: "released", label: "Released" },
-  { value: "upcoming", label: "Upcoming" },
+  { value: "released", label: "Released", labelKey: "library.released" },
+  { value: "upcoming", label: "Upcoming", labelKey: "library.upcoming" },
 ] as const;
 
 const supabase = createClient();
 
 export default function LibraryPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const cell = useGridCell(3, 12);
 
@@ -61,7 +61,7 @@ export default function LibraryPage() {
     setSelected(new Set());
   }, [kind, category]);
 
-  const groups = useMemo(() => (top === "history" && items ? groupByDay(items) : []), [top, items]);
+  const groups = useMemo(() => (top === "history" && items ? groupByDay(items, t, lang) : []), [top, items, t, lang]);
   const total = items?.length ?? 0;
 
   function toggleSelect(id: string) {
@@ -109,13 +109,13 @@ export default function LibraryPage() {
     );
   }
 
-  const actionLabel = top === "following" ? "Unfollow" : top === "history" ? "Delete" : "Remove";
+  const actionLabel = top === "following" ? t("title.unfollow") : top === "history" ? t("downloads.delete") : t("library.remove");
   const confirmCopy =
     top === "following"
-      ? { title: "Unfollow", body: "They'll leave Following and your saved episodes for them will be cleared." }
+      ? { title: t("library.unfollowTitle"), body: t("library.unfollowBody") }
       : top === "history"
-        ? { title: "Delete from history", body: "Your watch progress for them will be cleared." }
-        : { title: "Remove reminders", body: "You won't be notified when they release." };
+        ? { title: t("library.deleteHistoryTitle"), body: t("library.deleteHistoryBody") }
+        : { title: t("library.removeRemindersTitle"), body: t("library.removeRemindersBody") };
 
   const showSkeleton = (authLoading || (user && items === null)) && !error;
 
@@ -128,13 +128,13 @@ export default function LibraryPage() {
           <View className="mt-1">
             {top === "reminders" ? (
               <SegmentedControl
-                ariaLabel="Reminder status"
+                ariaLabel={t("library.reminderStatus")}
                 options={REMINDER_OPTIONS}
                 value={reminderTab}
                 onChange={setReminderTab}
               />
             ) : (
-              <SegmentedControl ariaLabel="Category" options={CATEGORIES} value={category} onChange={setCategory} />
+              <SegmentedControl ariaLabel={t("library.category")} options={CATEGORIES} value={category} onChange={setCategory} />
             )}
           </View>
 
@@ -146,8 +146,8 @@ export default function LibraryPage() {
 
           {!user && !authLoading ? (
             <EmptyState
-              message="Sign in to keep track of what you follow and watch."
-              actionLabel="Sign in"
+              message={t("library.signInPrompt")}
+              actionLabel={t("library.signIn")}
               href="/auth/login?next=/library"
             />
           ) : null}
@@ -168,7 +168,7 @@ export default function LibraryPage() {
             <View className="mt-12 items-center">
               <Text className="text-sm text-muted">{t("library.loadError")}</Text>
               <Button variant="secondary" size="sm" className="mt-3" onPress={refresh}>
-                Try again
+                {t("common.retry")}
               </Button>
             </View>
           ) : null}
@@ -213,7 +213,7 @@ export default function LibraryPage() {
                 </View>
               )}
 
-              <Text className="mt-8 pb-2 text-center text-[15px] text-muted/70">--The End--</Text>
+              <Text className="mt-8 pb-2 text-center text-[15px] text-muted/70">{t("downloads.theEnd")}</Text>
             </FadeIn>
           ) : null}
 
@@ -236,11 +236,11 @@ export default function LibraryPage() {
       <BottomSheet open={confirmOpen} onClose={() => setConfirmOpen(false)} title={confirmCopy.title}>
         <View className="px-5 pb-5">
           <Text className="text-[14px] leading-relaxed text-muted">
-            {selected.size === 1 ? "1 title" : `${selected.size} titles`}. {confirmCopy.body}
+            {selected.size === 1 ? t("library.titleCount", { n: 1 }) : t("library.titlesCount", { n: selected.size })}. {confirmCopy.body}
           </Text>
           <View className="mt-5 flex-row gap-3">
             <Button variant="secondary" className="flex-1" onPress={() => setConfirmOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button variant="danger" className="flex-1" onPress={removeSelected}>
               {actionLabel}

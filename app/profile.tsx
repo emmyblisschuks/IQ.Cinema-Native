@@ -128,11 +128,11 @@ export default function ProfilePage() {
 
     const mime = asset.mimeType ?? "image/jpeg";
     if (!(mime in MIME_EXT)) {
-      setAvatarError("Use a JPG, PNG, or WEBP image.");
+      setAvatarError(t("profile.errImageType"));
       return;
     }
     if ((asset.fileSize ?? 0) > 2 * 1024 * 1024) {
-      setAvatarError("Image must be under 2MB.");
+      setAvatarError(t("profile.errImageSize"));
       return;
     }
 
@@ -156,7 +156,7 @@ export default function ProfilePage() {
       await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
       setAvatarUrl(publicUrl);
     } catch (e) {
-      setAvatarError((e as Error).message ?? "Upload failed.");
+      setAvatarError((e as Error).message ?? t("profile.uploadFailed"));
     } finally {
       setAvatarUploading(false);
     }
@@ -230,7 +230,7 @@ export default function ProfilePage() {
               <Pressable
                 onPress={handleAvatarChange}
                 disabled={avatarUploading}
-                accessibilityLabel="Change profile photo"
+                accessibilityLabel={t("profile.changePhoto")}
                 className="h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-surface-raised"
                 style={{ opacity: avatarUploading ? 0.7 : 1 }}
               >
@@ -253,7 +253,7 @@ export default function ProfilePage() {
             <View className="min-w-0 flex-1">
               <Text className="text-[16px] font-semibold text-text">{profile?.display_name ?? "—"}</Text>
               <Text className="text-[13px] text-muted">@{profile?.username}</Text>
-              {avatarUploading ? <Text className="mt-0.5 text-[11px] text-muted">Uploading…</Text> : null}
+              {avatarUploading ? <Text className="mt-0.5 text-[11px] text-muted">{t("profile.uploading")}</Text> : null}
               {avatarError ? <Text className="mt-0.5 text-[11px] text-crimson">{avatarError}</Text> : null}
             </View>
           </View>

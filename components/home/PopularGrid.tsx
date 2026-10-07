@@ -2,14 +2,16 @@ import { View } from "react-native";
 import { PopularCard, type PopularCardData } from "./PopularCard";
 import { Text } from "@/components/ui/Text";
 import { useGridCell } from "@/lib/layout";
+import { useI18n } from "@/hooks/useI18n";
 
 export function PopularGrid({ heading, titles }: { heading: string; titles: PopularCardData[] }) {
+  const { t } = useI18n();
   const cell = useGridCell(2, 12);
 
   if (!titles.length) {
     return (
       <View className="mt-8 px-6">
-        <Text className="text-center text-sm text-muted">Nothing here yet.</Text>
+        <Text className="text-center text-sm text-muted">{t("home.nothingHere")}</Text>
       </View>
     );
   }

@@ -5,10 +5,12 @@ import { useRouter } from "expo-router";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Icon } from "@/components/ui/Icon";
+import { useI18n } from "@/hooks/useI18n";
 
 const supabase = createClient();
 
 export function NotificationBell() {
+  const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
   const [unread, setUnread] = useState(0);
@@ -26,7 +28,7 @@ export function NotificationBell() {
   }, [user]);
 
   return (
-    <Pressable onPress={() => router.push("/notifications")} accessibilityLabel="Notifications" hitSlop={8}>
+    <Pressable onPress={() => router.push("/notifications")} accessibilityLabel={t("notifications.bell")} hitSlop={8}>
       <View className="relative p-1">
         <Icon as={Bell} size={22} tone="text" />
         {unread > 0 && (

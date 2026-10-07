@@ -2,6 +2,7 @@ import { Pressable, View } from "react-native";
 import { ArrowLeft, Gauge, MoreHorizontal } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Text";
+import { useI18n } from "@/hooks/useI18n";
 
 export function PlayerTopBar({
   episodeNumber,
@@ -22,6 +23,7 @@ export function PlayerTopBar({
   onOpenMore: () => void;
   visible?: boolean;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -30,7 +32,7 @@ export function PlayerTopBar({
       style={{ paddingTop: insets.top + 10, opacity: visible ? 1 : 0 }}
     >
       <View className="flex-row items-center gap-2">
-        <Pressable onPress={onBack} accessibilityLabel="Back" className="h-9 w-9 items-center justify-center rounded-full bg-black/50">
+        <Pressable onPress={onBack} accessibilityLabel={t("common.back")} className="h-9 w-9 items-center justify-center rounded-full bg-black/50">
           <ArrowLeft size={18} color="#fff" />
         </Pressable>
         <Pressable onPress={onOpenTitle} className="rounded-full bg-black/50 px-3 py-1.5">
@@ -41,9 +43,9 @@ export function PlayerTopBar({
       <View className="flex-row items-center gap-2">
         <Pressable onPress={onOpenSpeed} className="flex-row items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5">
           <Gauge size={15} color="#fff" />
-          <Text className="text-[13px] font-semibold text-white">{speed === 1 ? "Speed" : `${speed}x`}</Text>
+          <Text className="text-[13px] font-semibold text-white">{speed === 1 ? t("watch.speed") : `${speed}x`}</Text>
         </Pressable>
-        <Pressable onPress={onOpenMore} accessibilityLabel="More options" className="h-9 w-9 items-center justify-center rounded-full bg-black/50">
+        <Pressable onPress={onOpenMore} accessibilityLabel={t("watch.moreOptions")} className="h-9 w-9 items-center justify-center rounded-full bg-black/50">
           <MoreHorizontal size={18} color="#fff" />
         </Pressable>
       </View>

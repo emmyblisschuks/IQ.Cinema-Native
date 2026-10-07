@@ -6,6 +6,7 @@ import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Text } from "@/components/ui/Text";
 import { getLocalUri } from "@/lib/offline";
+import { useI18n } from "@/hooks/useI18n";
 
 function Player({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => {
@@ -27,6 +28,7 @@ function Player({ uri }: { uri: string }) {
 }
 
 export default function OfflinePlayPage() {
+  const { t } = useI18n();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [uri, setUri] = useState<string | null | undefined>(undefined);
@@ -45,7 +47,7 @@ export default function OfflinePlayPage() {
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       <SafeAreaView edges={["top"]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: 16 }}>
-          <Text className="text-white">Back</Text>
+          <Text className="text-white">{t("common.back")}</Text>
         </Pressable>
       </SafeAreaView>
       {uri ? (
@@ -53,7 +55,7 @@ export default function OfflinePlayPage() {
       ) : (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Text className="text-white">
-            {uri === null ? "This download is no longer on your device." : "Loading..."}
+            {uri === null ? t("downloads.gone") : t("common.loading")}
           </Text>
         </View>
       )}

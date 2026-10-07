@@ -7,7 +7,7 @@ export async function initializePaystackPurchase(purchaseType: PurchaseType, ite
   const supabase = createClient();
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
-  if (!token) throw new Error("Not signed in");
+  if (!token) throw new Error("not_signed_in");
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-initialize`, {
     method: "POST",
@@ -19,7 +19,7 @@ export async function initializePaystackPurchase(purchaseType: PurchaseType, ite
   });
 
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "Could not start payment");
+  if (!json.ok) throw new Error(json.error || "payment_start_failed");
   return json as { authorization_url: string; access_code: string; reference: string };
 }
 

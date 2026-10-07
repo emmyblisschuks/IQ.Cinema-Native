@@ -42,14 +42,14 @@ function parseTimestamp(value: string) {
   return new Date(iso);
 }
 
-export function dayLabel(value: string, now = new Date()) {
+export function dayLabel(value: string, t: (key: string) => string, lang: string, now = new Date()) {
   const d = parseTimestamp(value);
-  if (Number.isNaN(d.getTime())) return "Earlier";
+  if (Number.isNaN(d.getTime())) return t("library.earlier");
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  return d.toLocaleDateString(undefined, {
+  if (diffDays <= 0) return t("library.today");
+  if (diffDays === 1) return t("library.yesterday");
+  return d.toLocaleDateString(lang, {
     month: "short",
     day: "numeric",
     ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
@@ -57,10 +57,10 @@ export function dayLabel(value: string, now = new Date()) {
 }
 
 // Preserves the incoming (newest-first) order.
-export function groupByDay(items: MyListItem[]) {
+export function groupByDay(items: MyListItem[], t: (key: string) => string, lang: string) {
   const groups: { label: string; items: MyListItem[] }[] = [];
   for (const item of items) {
-    const label = dayLabel(item.activity_at);
+    const label = dayLabel(item.activity_at, t, lang);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(item);
     else groups.push({ label, items: [item] });

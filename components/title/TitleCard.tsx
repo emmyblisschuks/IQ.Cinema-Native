@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { Scrim } from "@/components/ui/Scrim";
 import { formatCount } from "@/lib/format";
+import { useI18n } from "@/hooks/useI18n";
 
 export type TitleCardData = {
   id: string;
@@ -22,6 +23,7 @@ export type TitleCardData = {
 };
 
 export function TitleCard({ title, size = "md" }: { title: TitleCardData; size?: "sm" | "md" }) {
+  const { t } = useI18n();
   const router = useRouter();
   const width = size === "sm" ? 112 : 144; // w-28 / w-36
   const href = title.first_episode_id ? `/watch/${title.first_episode_id}` : `/title/${title.slug}`;
@@ -47,13 +49,13 @@ export function TitleCard({ title, size = "md" }: { title: TitleCardData; size?:
               />
             ) : (
               <View className="h-full items-center justify-center">
-                <Text className="text-xs text-muted">No poster</Text>
+                <Text className="text-xs text-muted">{t("common.poster.none")}</Text>
               </View>
             )}
 
             {title.is_exclusive ? (
               <View className="absolute left-1.5 top-1.5 rounded-sm bg-crimson px-1.5 py-0.5">
-                <Text className="text-[10px] font-semibold text-white">Exclusive</Text>
+                <Text className="text-[10px] font-semibold text-white">{t("title.exclusive")}</Text>
               </View>
             ) : null}
 

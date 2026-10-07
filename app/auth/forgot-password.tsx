@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
   async function handleSubmit() {
     if (loading) return;
     if (!email.trim()) {
-      setError("Enter the email on your account.");
+      setError(t("auth.enterEmail"));
       return;
     }
     setLoading(true);

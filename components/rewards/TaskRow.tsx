@@ -7,6 +7,7 @@ import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import type { RewardTask } from "@/lib/rewards";
 import { taskCtaLabel, taskProgressLabel } from "@/lib/rewards";
+import { useI18n } from "@/hooks/useI18n";
 
 const ICONS: Record<string, LucideIcon> = {
   login_reward: Gift, link_email: Mail, link_whatsapp: MessageCircle,
@@ -18,6 +19,7 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 export function TaskRow({ task, busy, onAction }: { task: RewardTask; busy: boolean; onAction: (t: RewardTask) => void }) {
+  const { t, tr } = useI18n();
   const IconComp = ICONS[task.key] ?? Bell;
   const done = task.status === "done";
   const label = taskCtaLabel(task);
@@ -30,7 +32,7 @@ export function TaskRow({ task, busy, onAction }: { task: RewardTask; busy: bool
       </View>
       <View className="min-w-0 flex-1">
         <Text numberOfLines={1} className="text-[14px] font-medium text-text">
-          {task.title}{progress ? <Text className="text-muted"> {progress}</Text> : null}
+          {tr(`rewardTask.${task.key}`, task.title)}{progress ? <Text className="text-muted"> {progress}</Text> : null}
         </Text>
         <View className="mt-0.5 flex-row items-center gap-1">
           <Icon as={Zap} size={12} tone="gold" fillTone="gold" />
@@ -44,7 +46,7 @@ export function TaskRow({ task, busy, onAction }: { task: RewardTask; busy: bool
       </View>
       <Button size="sm" variant={done ? "secondary" : "primary"} disabled={done || busy} onPress={() => onAction(task)}>
         {done ? <Icon as={Check} size={14} tone="muted" /> : null}
-        {label}
+        {t(label)}
       </Button>
     </View>
   );

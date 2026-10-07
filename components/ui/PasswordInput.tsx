@@ -6,11 +6,13 @@ import { Eye, EyeOff } from "lucide-react-native";
 import clsx from "clsx";
 import { TextInput } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
+import { useI18n } from "@/hooks/useI18n";
 
 type PasswordInputProps = Omit<TextInputProps, "secureTextEntry"> & { className?: string };
 
 export const PasswordInput = forwardRef<RNTextInput, PasswordInputProps>(
   ({ className, ...props }, ref) => {
+    const { t } = useI18n();
     const [visible, setVisible] = useState(false);
 
     return (
@@ -28,7 +30,7 @@ export const PasswordInput = forwardRef<RNTextInput, PasswordInputProps>(
         />
         <Pressable
           onPress={() => setVisible((v) => !v)}
-          accessibilityLabel={visible ? "Hide password" : "Show password"}
+          accessibilityLabel={visible ? t("auth.hidePassword") : t("auth.showPassword")}
           className="absolute inset-y-0 right-0 items-center justify-center px-3.5"
         >
           <Icon as={visible ? EyeOff : Eye} size={17} tone="muted" />

@@ -17,7 +17,7 @@ export default function LoginPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string; error?: string }>();
   const supabase = createClient();
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
@@ -28,7 +28,7 @@ export default function LoginPage() {
   async function handleSubmit() {
     if (loading) return;
     if (!email.trim() || !password) {
-      setError("Enter your email and password.");
+      setError(t("auth.enterEmailPassword"));
       return;
     }
     setLoading(true);
@@ -77,7 +77,7 @@ export default function LoginPage() {
         </View>
         {error ? <Text className="text-[13px] text-crimson">{error}</Text> : null}
         <Button className="w-full" size="lg" disabled={loading} onPress={handleSubmit}>
-          {loading ? t("auth.signingIn") : lang === "en" ? "Sign In" : t("auth.signIn")}
+          {loading ? t("auth.signingIn") : t("auth.signInButton")}
         </Button>
       </View>
 

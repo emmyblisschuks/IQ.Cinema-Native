@@ -22,3 +22,13 @@ export function t(lang: string, key: string, vars?: Record<string, string | numb
   }
   return str;
 }
+
+export function hasKey(lang: string, key: string): boolean {
+  return key in (nativeMessages[lang] ?? {}) || key in ((dictionaries[lang] ?? en) as Record<string, string>);
+}
+
+// DB-provided names (genres, reward task titles) ship in English. Translate
+// the ones we know by a stable key; anything new falls back to the DB text.
+export function slugKey(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}

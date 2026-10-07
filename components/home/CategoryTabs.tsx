@@ -6,11 +6,12 @@ import clsx from "clsx";
 import { BottomSheet } from "@/components/shared/BottomSheet";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
+import { useI18n } from "@/hooks/useI18n";
 
 const staticTabs = [
-  { key: "popular", label: "Popular" },
-  { key: "new", label: "New" },
-  { key: "ranking", label: "Ranking" },
+  { key: "popular", labelKey: "home.popular" },
+  { key: "new", labelKey: "home.new" },
+  { key: "ranking", labelKey: "home.ranking" },
 ] as const;
 
 export function CategoryTabs({
@@ -22,6 +23,7 @@ export function CategoryTabs({
   activeGenre?: string;
   genres: string[];
 }) {
+  const { t, genre: genreLabel } = useI18n();
   const router = useRouter();
   const isGenreActive = activeTab === "genre";
   const [open, setOpen] = useState(false);
@@ -33,7 +35,7 @@ export function CategoryTabs({
 
   return (
     <View className="flex-row items-center gap-5 px-4 pt-4">
-      {staticTabs.map(({ key, label }) => {
+      {staticTabs.map(({ key, labelKey }) => {
         const active = activeTab === key;
         return (
           <Pressable key={key} onPress={() => go({ tab: key === "popular" ? undefined : key, genre: undefined })}>
@@ -43,7 +45,7 @@ export function CategoryTabs({
                 active ? "text-text" : "text-muted"
               )}
             >
-              {label}
+              {t(labelKey)}
             </Text>
           </Pressable>
         );
@@ -56,12 +58,12 @@ export function CategoryTabs({
             isGenreActive ? "text-text" : "text-muted"
           )}
         >
-          Genres
+          {t("home.genres")}
         </Text>
         <Icon as={ChevronDown} size={17} strokeWidth={3} tone={isGenreActive ? "text" : "muted"} />
       </Pressable>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Genres">
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={t("home.genres")}>
         <View className="pb-1">
           {genres.map((genre) => (
             <Pressable
@@ -78,11 +80,11 @@ export function CategoryTabs({
                   isGenreActive && activeGenre === genre ? "font-semibold text-pink" : "text-text"
                 )}
               >
-                {genre}
+                {genreLabel(genre)}
               </Text>
             </Pressable>
           ))}
-          {!genres.length && <Text className="px-5 py-3 text-sm text-muted">No genres yet</Text>}
+          {!genres.length && <Text className="px-5 py-3 text-sm text-muted">{t("home.noGenres")}</Text>}
         </View>
       </BottomSheet>
     </View>

@@ -6,13 +6,14 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, View } from "react-native";
 import clsx from "clsx";
 import { Text } from "@/components/ui/Text";
+import { useI18n } from "@/hooks/useI18n";
 
 export type TopTab = "following" | "history" | "reminders";
 
-const TABS: { value: TopTab; label: string }[] = [
-  { value: "following", label: "Following" },
-  { value: "history", label: "History" },
-  { value: "reminders", label: "Reminder Set" },
+const TABS: { value: TopTab; labelKey: string }[] = [
+  { value: "following", labelKey: "library.following" },
+  { value: "history", labelKey: "library.history" },
+  { value: "reminders", labelKey: "library.reminders" },
 ];
 
 export function LibraryTabs({
@@ -22,6 +23,7 @@ export function LibraryTabs({
   value: TopTab;
   onChange: (tab: TopTab) => void;
 }) {
+  const { t } = useI18n();
   const [boxes, setBoxes] = useState<Partial<Record<TopTab, { x: number; w: number }>>>({});
   const center = boxes[value] ? boxes[value]!.x + boxes[value]!.w / 2 : null;
   const left = useRef(new Animated.Value(0)).current;
@@ -37,8 +39,8 @@ export function LibraryTabs({
   }, [center, left]);
 
   return (
-    <View accessibilityRole="tablist" accessibilityLabel="My List" className="relative flex-row gap-4 pb-3 pt-1">
-      {TABS.map(({ value: tab, label }) => (
+    <View accessibilityRole="tablist" accessibilityLabel={t("library.myList")} className="relative flex-row gap-4 pb-3 pt-1">
+      {TABS.map(({ value: tab, labelKey }) => (
         <Pressable
           key={tab}
           accessibilityRole="tab"
@@ -58,7 +60,7 @@ export function LibraryTabs({
               value === tab ? "text-text" : "text-muted"
             )}
           >
-            {label}
+            {t(labelKey)}
           </Text>
         </Pressable>
       ))}

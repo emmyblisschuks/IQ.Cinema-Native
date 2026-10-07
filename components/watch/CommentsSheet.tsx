@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Text, TextInput } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { BrandGradient } from "@/components/ui/BrandGradient";
+import { useI18n } from "@/hooks/useI18n";
 
 type Comment = {
   id: string;
@@ -40,6 +41,7 @@ export function CommentsSheet({
   count: number;
   onCountChange: (next: number) => void;
 }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const supabase = createClient();
   const insets = useSafeAreaInsets();
@@ -102,7 +104,7 @@ export function CommentsSheet({
             onSubmitEditing={submit}
             returnKeyType="send"
             maxLength={500}
-            placeholder={user ? "Add a comment…" : "Sign in to comment"}
+            placeholder={user ? t("watch.addComment") : t("watch.signInToComment")}
             editable={!!user}
             className="h-10 flex-1 rounded-full border border-border bg-surface-raised px-4 text-[14px] text-text"
             style={{ opacity: user ? 1 : 0.6 }}
@@ -110,7 +112,7 @@ export function CommentsSheet({
           <Pressable
             onPress={submit}
             disabled={!canPost}
-            accessibilityLabel="Post comment"
+            accessibilityLabel={t("watch.postComment")}
             className="h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full"
             style={{ opacity: canPost ? 1 : 0.4 }}
           >
@@ -124,7 +126,7 @@ export function CommentsSheet({
         {comments === null ? [1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />) : null}
 
         {comments !== null && comments.length === 0 ? (
-          <Text className="py-8 text-center text-sm text-muted">No comments yet — be the first to say something.</Text>
+          <Text className="py-8 text-center text-sm text-muted">{t("watch.noComments")}</Text>
         ) : null}
 
         {comments?.map((c) => (
@@ -136,7 +138,7 @@ export function CommentsSheet({
             </View>
             <View className="min-w-0 flex-1">
               <Text className="text-[13px] font-semibold text-text">
-                {c.profiles?.display_name || c.profiles?.username || "Viewer"}
+                {c.profiles?.display_name || c.profiles?.username || t("watch.viewer")}
                 <Text className="ml-2 font-normal text-muted">{`  ${timeAgo(c.created_at)}`}</Text>
               </Text>
               <Text className="mt-0.5 text-[14px] text-text/90">{c.body}</Text>

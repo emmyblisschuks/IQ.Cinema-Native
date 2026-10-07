@@ -97,7 +97,7 @@ export function TitleActions({
       if (rpcError) throw rpcError;
     } catch {
       setFollowing(!next);
-      setError("Couldn't update your list. Try again.");
+      setError(t("title.listError"));
     } finally {
       busyRef.current = false; // never leave the button locked
     }
@@ -119,7 +119,7 @@ export function TitleActions({
       if (rpcError) throw rpcError;
     } catch {
       setReminded(!next);
-      setError("Couldn't update your reminder. Try again.");
+      setError(t("title.reminderError"));
     } finally {
       busyRef.current = false;
     }
@@ -136,7 +136,7 @@ export function TitleActions({
           accessibilityState={{ selected: reminded }}
         >
           {reminded ? <Icon as={BellRing} size={17} tone="pink" fillTone="pink" /> : <Icon as={Bell} size={17} />}
-          {reminded ? "Reminder set" : "Remind me"}
+          {reminded ? t("title.reminderSet") : t("title.remindMe")}
         </Button>
         {error ? <Text className="mt-2 text-[12px] text-crimson">{error}</Text> : null}
       </View>
@@ -153,12 +153,12 @@ export function TitleActions({
           }}
         >
           <Icon as={Play} size={16} tone="white" fillTone="white" />
-          Watch now
+          {t("title.watchNow")}
         </Button>
         <Button
           variant="secondary"
           size="icon"
-          accessibilityLabel={following ? "Unfollow" : "Follow"}
+          accessibilityLabel={following ? t("title.unfollow") : t("title.follow")}
           accessibilityState={{ selected: following }}
           onPress={toggleFollow}
         >

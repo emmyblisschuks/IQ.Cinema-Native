@@ -112,8 +112,8 @@ export default function TitlePage() {
   if (state === "missing") {
     return (
       <View className="flex-1 items-center justify-center bg-bg px-6">
-        <Text className="font-display text-lg text-text">Title not found</Text>
-        <Text className="mt-1.5 text-center text-sm text-muted">It may have been removed or unpublished.</Text>
+        <Text className="font-display text-lg text-text">{t("title.notFound")}</Text>
+        <Text className="mt-1.5 text-center text-sm text-muted">{t("common.notFoundHint")}</Text>
       </View>
     );
   }

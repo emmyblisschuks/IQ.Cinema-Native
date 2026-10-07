@@ -26,7 +26,7 @@ export function WhatsAppLinkSheet({ open, onClose, onLinked }: { open: boolean; 
   return (
     <BottomSheet open={open} onClose={onClose} title={t("whatsapp.title")}>
       <View className="px-4 pb-4 pt-1">
-        <Text className="text-[13px] text-muted">Add your WhatsApp number so we can reach you about your account and orders.</Text>
+        <Text className="text-[13px] text-muted">{t("whatsapp.blurb")}</Text>
         <Input keyboardType="phone-pad" placeholder="080X XXX XXXX" value={value} onChangeText={setValue} className="mt-3" autoFocus />
         {error ? <Text className="mt-2 text-[12.5px] text-crimson">{error}</Text> : null}
         <Button className="mt-4 w-full" disabled={busy || !value.trim()} onPress={submit}>

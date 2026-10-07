@@ -5,8 +5,10 @@ import { useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
 import { TextInput } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
+import { useI18n } from "@/hooks/useI18n";
 
 export function HomeHeader() {
+  const { t } = useI18n();
   const router = useRouter();
   const [q, setQ] = useState("");
 
@@ -23,7 +25,7 @@ export function HomeHeader() {
           onChangeText={setQ}
           onSubmitEditing={handleSubmit}
           returnKeyType="search"
-          placeholder="Search titles..."
+          placeholder={t("home.searchPlaceholder")}
           className="flex-1 bg-transparent p-0 text-sm text-text"
         />
       </View>

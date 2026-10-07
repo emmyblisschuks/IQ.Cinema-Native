@@ -52,7 +52,7 @@ export default function NotificationsPage() {
                     <Text className="text-[14px] font-medium text-text">{n.title}</Text>
                     {n.body?<Text className="mt-0.5 text-[12.5px] text-muted">{n.body}</Text>:null}
                   </Pressable>
-                  <Pressable onPress={() => remove(n.id)} accessibilityLabel="Delete" hitSlop={8}><Icon as={Trash2} size={15} tone="muted" /></Pressable>
+                  <Pressable onPress={() => remove(n.id)} accessibilityLabel={t("notifications.delete")} hitSlop={8}><Icon as={Trash2} size={15} tone="muted" /></Pressable>
                 </View>
               ))}
             </View>

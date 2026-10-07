@@ -27,7 +27,7 @@ export function PosterCard({
   upcoming?: boolean;
   width: number;
 }) {
-  const { t } = useI18n();
+  const { t, genre } = useI18n();
   const router = useRouter();
   const label = item.tags[0];
 
@@ -40,7 +40,7 @@ export function PosterCard({
     <Pressable
       onPress={onPress}
       accessibilityState={editing ? { selected } : undefined}
-      accessibilityLabel={editing ? `${selected ? "Deselect" : "Select"} ${item.title.trim()}` : undefined}
+      accessibilityLabel={editing ? `${selected ? t("common.deselect") : t("common.select")} ${item.title.trim()}` : undefined}
       style={{ width }}
     >
       {({ pressed }) => (
@@ -84,7 +84,7 @@ export function PosterCard({
             {label ? (
               <View className="absolute bottom-1.5 left-1.5 rounded-md bg-black/55 px-1.5 py-0.5" style={{ maxWidth: "78%" }}>
                 <Text numberOfLines={1} className="text-[11px] font-medium text-white">
-                  {label}
+                  {genre(label)}
                 </Text>
               </View>
             ) : null}
@@ -104,7 +104,7 @@ export function PosterCard({
           <Text numberOfLines={1} className="mt-2 text-[14px] font-semibold text-text">
             {item.title.trim()}
           </Text>
-          <Text className="mt-0.5 text-[12.5px] text-muted">{upcoming ? "Coming soon" : progressLabel(item)}</Text>
+          <Text className="mt-0.5 text-[12.5px] text-muted">{upcoming ? t("title.comingSoon") : progressLabel(item)}</Text>
         </View>
       )}
     </Pressable>

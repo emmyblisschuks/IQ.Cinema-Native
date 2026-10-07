@@ -41,7 +41,7 @@ export function TitleDetailsSheet({
   // promo gets spliced in) instead of leaving for the title page.
   onSelectSimilar?: (t: SimilarTitle) => void;
 }) {
-  const { t } = useI18n();
+  const { t, genre } = useI18n();
   const router = useRouter();
   const supabase = createClient();
   const [tags, setTags] = useState<string[] | null>(null);
@@ -78,7 +78,7 @@ export function TitleDetailsSheet({
   }, [open, load]);
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Details">
+    <BottomSheet open={open} onClose={onClose} title={t("watch.details")}>
       <View className="gap-4 px-3 pb-3 pt-1">
         <View className="flex-row gap-3">
           {posterUrl ? (
@@ -108,9 +108,9 @@ export function TitleDetailsSheet({
           </View>
         ) : tags.length > 0 ? (
           <View className="flex-row flex-wrap gap-2">
-            {tags.map((t) => (
-              <View key={t} className="rounded-full bg-surface-raised px-3 py-1">
-                <Text className="text-[12px] font-medium text-muted">{t}</Text>
+            {tags.map((tag) => (
+              <View key={tag} className="rounded-full bg-surface-raised px-3 py-1">
+                <Text className="text-[12px] font-medium text-muted">{genre(tag)}</Text>
               </View>
             ))}
           </View>

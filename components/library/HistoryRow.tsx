@@ -35,7 +35,7 @@ export function HistoryRow({
       <Pressable
         onPress={() => (editing ? onToggleSelect() : router.push(watchHref(item) as never))}
         accessibilityState={editing ? { selected } : undefined}
-        accessibilityLabel={editing ? `${selected ? "Deselect" : "Select"} ${item.title.trim()}` : undefined}
+        accessibilityLabel={editing ? `${selected ? t("common.deselect") : t("common.select")} ${item.title.trim()}` : undefined}
         className="min-w-0 flex-1 flex-row gap-3.5"
       >
         <View className="relative shrink-0 overflow-hidden rounded-lg bg-surface-raised" style={{ width: 88, aspectRatio: 3 / 4 }}>
@@ -79,7 +79,7 @@ export function HistoryRow({
         <Pressable
           onPress={onToggleFollow}
           accessibilityState={{ selected: item.is_following }}
-          accessibilityLabel={item.is_following ? "Unfollow" : "Follow"}
+          accessibilityLabel={item.is_following ? t("title.unfollow") : t("title.follow")}
           className="h-11 w-11 shrink-0 items-center justify-center rounded-full active:bg-surface-raised"
         >
           <Pop active trigger={item.is_following}>

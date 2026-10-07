@@ -21,6 +21,7 @@ import { EpisodeFeed } from "@/components/watch/EpisodeFeed";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
 import { UUID_RE, stripLegacySlugSuffix } from "@/lib/links";
+import { useI18n } from "@/hooks/useI18n";
 
 const supabase = createClient();
 
@@ -77,6 +78,7 @@ async function resolve(segments: string[]): Promise<{ episodeId: string; episode
 }
 
 export default function WatchPage() {
+  const { t } = useI18n();
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
   const pathname = usePathname();
   let segments = Array.isArray(slug) ? slug : slug ? [slug] : [];
@@ -114,8 +116,8 @@ export default function WatchPage() {
   if (state.status === "missing") {
     return (
       <View className="flex-1 items-center justify-center bg-black px-6">
-        <Text className="font-display text-lg text-white">Episode not found</Text>
-        <Text className="mt-1.5 text-center text-sm text-white/60">It may have been removed or unpublished.</Text>
+        <Text className="font-display text-lg text-white">{t("watch.notFound")}</Text>
+        <Text className="mt-1.5 text-center text-sm text-white/60">{t("common.notFoundHint")}</Text>
       </View>
     );
   }
@@ -123,9 +125,9 @@ export default function WatchPage() {
   if (state.status === "error") {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-black px-6">
-        <Text className="font-display text-lg text-white">Couldn't load this episode</Text>
-        <Text className="text-center text-sm text-white/60">Check your connection and try again.</Text>
-        <Button onPress={() => setAttempt((n) => n + 1)}>Try again</Button>
+        <Text className="font-display text-lg text-white">{t("watch.loadFailed")}</Text>
+        <Text className="text-center text-sm text-white/60">{t("foryou.checkConnection")}</Text>
+        <Button onPress={() => setAttempt((n) => n + 1)}>{t("common.retry")}</Button>
       </View>
     );
   }

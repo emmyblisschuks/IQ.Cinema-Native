@@ -60,7 +60,7 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 export default function ManageTitleScreen() {
-  const { t } = useI18n();
+  const { t, genre: genreLabel } = useI18n();
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
@@ -293,7 +293,7 @@ export default function ManageTitleScreen() {
                     <Text className="mb-2 text-[13px] font-semibold text-muted">{t("upload.genre")}</Text>
                     <View className="flex-row flex-wrap gap-2">
                       <Chip label={t("manage.noGenre")} active={!editGenre} onPress={() => setEditGenre("")} />
-                      {genres.map((g) => <Chip key={g} label={g} active={editGenre === g} onPress={() => setEditGenre(g)} />)}
+                      {genres.map((g) => <Chip key={g} label={genreLabel(g)} active={editGenre === g} onPress={() => setEditGenre(g)} />)}
                     </View>
                   </View>
                 ) : null}
@@ -303,7 +303,7 @@ export default function ManageTitleScreen() {
                     <Text className="mb-2 text-[13px] font-semibold text-muted">{t("manage.tags")}</Text>
                     <View className="flex-row flex-wrap gap-2">
                       {genres.filter((g) => g !== editGenre).map((g) => (
-                        <Chip key={g} label={g} active={editTags.includes(g)} onPress={() => setEditTags((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))} />
+                        <Chip key={g} label={genreLabel(g)} active={editTags.includes(g)} onPress={() => setEditTags((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))} />
                       ))}
                     </View>
                   </View>

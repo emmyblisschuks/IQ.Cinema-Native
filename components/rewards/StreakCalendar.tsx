@@ -3,14 +3,16 @@ import { Check, Zap } from "lucide-react-native";
 import clsx from "clsx";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
+import { useI18n } from "@/hooks/useI18n";
 
 export function StreakCalendar({ schedule, todayIndex, checkedInToday }: {
   schedule: { day_index: number; coins: number }[];
   todayIndex: number;
   checkedInToday: boolean;
 }) {
+  const { t } = useI18n();
   return (
-    <View accessibilityRole="list" accessibilityLabel="7-day check-in streak" className="flex-row gap-1.5">
+    <View accessibilityRole="list" accessibilityLabel={t("rewards.streakA11y")} className="flex-row gap-1.5">
       {schedule.map((d) => {
         const isToday = d.day_index === todayIndex;
         const isPast = d.day_index < todayIndex || (isToday && checkedInToday);
@@ -27,7 +29,7 @@ export function StreakCalendar({ schedule, todayIndex, checkedInToday }: {
               : null}
           >
             <Text className={clsx("text-[9px] font-medium", isToday && !checkedInToday ? "text-white/90" : isPast ? "text-crimson" : "text-muted")}>
-              Day{d.day_index}
+              {t("rewards.dayN", { n: d.day_index })}
             </Text>
             <View className={clsx("h-5 w-5 items-center justify-center rounded-full",
               isPast ? "bg-crimson" : isToday && !checkedInToday ? "bg-white/25" : "bg-border")}>

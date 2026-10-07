@@ -46,7 +46,7 @@ function engagementFor(item: PromoItem): Engagement {
 }
 
 export function ForYouFeed() {
-  const { t } = useI18n();
+  const { t, genre } = useI18n();
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
@@ -503,7 +503,7 @@ export function ForYouFeed() {
                 <View className="flex-row flex-wrap items-center gap-1.5">
                   {(item.tags ?? []).slice(0, 2).map((tag) => (
                     <View key={tag} className="rounded-full px-2.5 py-1" style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
-                      <Text className="text-[11px] font-medium text-white/90">{tag}</Text>
+                      <Text className="text-[11px] font-medium text-white/90">{genre(tag)}</Text>
                     </View>
                   ))}
                   {epLabel ? <Text className="text-[12px] font-semibold text-white/80">{epLabel}</Text> : null}

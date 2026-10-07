@@ -77,7 +77,7 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 export default function UploadScreen() {
-  const { t } = useI18n();
+  const { t, genre: genreLabel } = useI18n();
   const { colors } = useTheme();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -511,7 +511,7 @@ export default function UploadScreen() {
                   <View>
                     <Text className="mb-2 text-[13px] font-semibold text-muted">{t("upload.genre")}</Text>
                     <View className="flex-row flex-wrap gap-2">
-                      {genres.map((g) => <Chip key={g} label={g} active={genre === g} onPress={() => setGenre(genre === g ? "" : g)} />)}
+                      {genres.map((g) => <Chip key={g} label={genreLabel(g)} active={genre === g} onPress={() => setGenre(genre === g ? "" : g)} />)}
                     </View>
                   </View>
                 ) : null}

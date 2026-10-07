@@ -59,11 +59,14 @@ export type RewardsState = {
   watch_seconds: number;
 };
 
-export function taskCtaLabel(t: Pick<RewardTask, "kind" | "status">) {
-  if (t.status === "done") return "Done";
-  if (t.kind === "ad" || t.kind === "checkin_ad") return "Watch";
-  if (t.kind === "watch_time") return t.status === "claimable" ? "Claim" : "Watch";
-  return t.status === "claimable" ? "Claim" : "Go";
+export type CtaKey = "rewards.cta.done" | "rewards.cta.watch" | "rewards.cta.claim" | "rewards.cta.go";
+
+// Returns a translation key (the caller runs it through t()).
+export function taskCtaLabel(t: Pick<RewardTask, "kind" | "status">): CtaKey {
+  if (t.status === "done") return "rewards.cta.done";
+  if (t.kind === "ad" || t.kind === "checkin_ad") return "rewards.cta.watch";
+  if (t.kind === "watch_time") return t.status === "claimable" ? "rewards.cta.claim" : "rewards.cta.watch";
+  return t.status === "claimable" ? "rewards.cta.claim" : "rewards.cta.go";
 }
 
 export function taskProgressLabel(t: Pick<RewardTask, "kind" | "done_count" | "daily_cap">) {

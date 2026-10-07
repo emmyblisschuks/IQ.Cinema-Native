@@ -2,6 +2,7 @@ import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Text } from "@/components/ui/Text";
+import { useI18n } from "@/hooks/useI18n";
 
 export type PopularCardData = {
   id: string;
@@ -15,6 +16,7 @@ export type PopularCardData = {
 };
 
 export function PopularCard({ title, rank, width }: { title: PopularCardData; rank: number; width: number }) {
+  const { t } = useI18n();
   const router = useRouter();
   const href = title.first_episode_id ? `/watch/${title.first_episode_id}` : `/title/${title.slug}`;
   return (
@@ -38,11 +40,11 @@ export function PopularCard({ title, rank, width }: { title: PopularCardData; ra
               />
             ) : (
               <View className="h-full items-center justify-center">
-                <Text className="text-xs text-muted">No poster</Text>
+                <Text className="text-xs text-muted">{t("common.poster.none")}</Text>
               </View>
             )}
             <View className="absolute right-1.5 top-1.5 rounded-sm bg-crimson px-1.5 py-0.5">
-              <Text className="text-[10px] font-semibold text-white">Hot</Text>
+              <Text className="text-[10px] font-semibold text-white">{t("home.hot")}</Text>
             </View>
           </View>
 

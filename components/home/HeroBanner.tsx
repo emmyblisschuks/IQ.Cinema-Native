@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Text } from "@/components/ui/Text";
 import { Scrim } from "@/components/ui/Scrim";
+import { useI18n } from "@/hooks/useI18n";
 
 type HeroTitle = {
   slug: string;
@@ -27,6 +28,7 @@ export function HeroBanner({
   featured: HeroTitle | null;
   exclusive: HeroTitle | null;
 }) {
+  const { t, genre } = useI18n();
   const router = useRouter();
   if (!featured) return null;
 
@@ -52,7 +54,7 @@ export function HeroBanner({
         <View className="absolute inset-x-0 bottom-0 p-3">
           {featured.genre_label ? (
             <Text className="text-[11px] font-medium uppercase tracking-wide text-pink">
-              {featured.genre_label}
+              {genre(featured.genre_label)}
             </Text>
           ) : null}
           <Text numberOfLines={1} className="text-[15px] font-semibold text-white">
@@ -77,7 +79,7 @@ export function HeroBanner({
           ) : null}
           <Scrim from={0.85} via={0.1} />
           <View className="absolute left-1.5 top-1.5 rounded-sm bg-pink px-1.5 py-0.5">
-            <Text className="text-[9px] font-semibold text-white">Exclusive</Text>
+            <Text className="text-[9px] font-semibold text-white">{t("home.exclusive")}</Text>
           </View>
           <Text
             numberOfLines={2}

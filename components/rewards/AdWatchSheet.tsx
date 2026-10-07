@@ -8,6 +8,7 @@ import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { Pop } from "@/components/ui/Pop";
 import { BottomSheet } from "@/components/shared/BottomSheet";
+import { useI18n } from "@/hooks/useI18n";
 
 const supabase = createClient();
 const R = 26;
@@ -17,6 +18,7 @@ export function AdWatchSheet({ open, taskKey, onClose, onCredited }: {
   open: boolean; taskKey: string | null;
   onClose: () => void; onCredited: (coins: number) => void;
 }) {
+  const { t } = useI18n();
   const [phase, setPhase] = useState<"loading"|"playing"|"done"|"error">("loading");
   const [ad, setAd] = useState<{ title: string } | null>(null);
   const [duration, setDuration] = useState(15);
@@ -30,7 +32,7 @@ export function AdWatchSheet({ open, taskKey, onClose, onCredited }: {
     if (!open || !taskKey) return;
     setPhase("loading"); setError(null); setCredited(0);
     supabase.rpc("start_ad_view", { p_task_key: taskKey }).then(({ data, error: e }) => {
-      if (e || !data?.ok) { setError(data?.error === "daily_cap_reached" ? "You've hit today's limit." : "Ads aren't available right now."); setPhase("error"); return; }
+      if (e || !data?.ok) { setError(data?.error === "daily_cap_reached" ? t("ads.dailyLimit") : t("ads.unavailable")); setPhase("error"); return; }
       viewId.current = data.view_id; setAd(data.ad); setDuration(data.duration_seconds); setRemaining(data.duration_seconds); setPhase("playing");
     });
   }, [open, taskKey]);
@@ -44,7 +46,7 @@ export function AdWatchSheet({ open, taskKey, onClose, onCredited }: {
   useEffect(() => {
     if (phase === "playing" && remaining === 0 && viewId.current) {
       supabase.rpc("complete_ad_view", { p_view_id: viewId.current }).then(({ data, error: e }) => {
-        if (e || !data?.ok) { setError("Couldn't confirm the view. Try again."); setPhase("error"); return; }
+        if (e || !data?.ok) { setError(t("ads.confirmFailed")); setPhase("error"); return; }
         setCredited(data.credited); setPhase("done"); onCredited(data.credited);
       });
     }
@@ -54,10 +56,10 @@ export function AdWatchSheet({ open, taskKey, onClose, onCredited }: {
   const dash = CIRC * (1 - progress);
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={ad?.title ?? "Watch to earn"}>
+    <BottomSheet open={open} onClose={onClose} title={ad?.title ?? t("ads.watchToEarn")}>
       <View className="items-center gap-4 px-5 py-6">
         {phase === "error" ? (
-          <><Text className="text-[14px] text-crimson">{error}</Text><Button variant="secondary" size="sm" onPress={onClose}>Close</Button></>
+          <><Text className="text-[14px] text-crimson">{error}</Text><Button variant="secondary" size="sm" onPress={onClose}>{t("common.close")}</Button></>
         ) : phase === "done" ? (
           <>
             <Pop active style={{ alignSelf:"center" }}>
@@ -66,7 +68,7 @@ export function AdWatchSheet({ open, taskKey, onClose, onCredited }: {
               </View>
             </Pop>
             <Text className="font-display text-lg font-semibold text-text">+{credited} reward coins</Text>
-            <Button size="sm" onPress={onClose}>Nice</Button>
+            <Button size="sm" onPress={onClose}>{t("ads.nice")}</Button>
           </>
         ) : (
           <>
@@ -78,7 +80,7 @@ export function AdWatchSheet({ open, taskKey, onClose, onCredited }: {
               </Svg>
               <Text className="absolute font-display text-[15px] font-semibold text-text">{phase === "loading" ? "" : remaining}</Text>
             </View>
-            <Text className="text-[13px] text-muted">{phase === "loading" ? "Loading…" : "Stay on this screen to earn your reward."}</Text>
+            <Text className="text-[13px] text-muted">{phase === "loading" ? t("common.loading") : t("ads.stay")}</Text>
           </>
         )}
       </View>

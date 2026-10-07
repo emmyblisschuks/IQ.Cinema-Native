@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ShareIcon } from "@/components/watch/ShareIcon";
 import { Text } from "@/components/ui/Text";
 import { formatCount } from "@/lib/format";
+import { useI18n } from "@/hooks/useI18n";
 
 const iconShadow = {
   shadowColor: "#000",
@@ -75,6 +76,7 @@ export function ActionRail({
   // Distance from the bottom edge; the feed raises it while the seek bar is up.
   bottom?: number;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -86,12 +88,12 @@ export function ActionRail({
         icon={<Bookmark size={32} color={saved ? "rgb(196,146,74)" : "#fff"} fill={saved ? "rgb(196,146,74)" : "none"} />}
         count={saveCount}
         active={saved}
-        label={saved ? "Remove from My List" : "Save to My List"}
+        label={saved ? t("watch.removeFromList") : t("watch.saveToList")}
         onPress={onToggleSave}
       />
-      <RailButton icon={<MessageCircle size={31} color="#fff" />} count={commentCount} label="View comments" onPress={onOpenComments} />
-      <RailButton icon={<ShareIcon size={30} />} count={shareCount} label="Share" showLabel onPress={onShare} />
-      <RailButton icon={<Layers size={30} color="#fff" />} label="Episodes" showLabel onPress={onOpenEpisodes} />
+      <RailButton icon={<MessageCircle size={31} color="#fff" />} count={commentCount} label={t("watch.viewComments")} onPress={onOpenComments} />
+      <RailButton icon={<ShareIcon size={30} />} count={shareCount} label={t("watch.share")} showLabel onPress={onShare} />
+      <RailButton icon={<Layers size={30} color="#fff" />} label={t("title.episodes")} showLabel onPress={onOpenEpisodes} />
     </View>
   );
 }

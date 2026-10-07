@@ -46,7 +46,9 @@ export default function WalletPage() {
       refresh();
       setTimeout(refresh, 4000);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      // Our own codes are translated; backend messages are shown as they come.
+      setError(msg === "not_signed_in" ? t("wallet.notSignedIn") : msg === "payment_start_failed" ? t("wallet.paymentFailed") : msg);
     } finally {
       setBuyingId(null);
     }

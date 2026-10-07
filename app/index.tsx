@@ -161,7 +161,7 @@ export default function HomePage() {
       <SafeAreaView edges={["top"]} className="flex-1 bg-bg">
         {failed ? (
           <View className="mt-16 px-6">
-            <Text className="text-center text-sm text-muted">Couldn't load titles. Pull down to retry.</Text>
+            <Text className="text-center text-sm text-muted">{t("home.loadError")}</Text>
           </View>
         ) : (
           <HomeSkeleton />

@@ -34,7 +34,7 @@ export default function SignupPage() {
   async function handleSubmit() {
     if (loading) return;
     if (!username.trim() || !email.trim() || !password) {
-      setError("Fill in every field.");
+      setError(t("auth.fillEveryField"));
       return;
     }
     if (password.length < 6) {

@@ -106,7 +106,7 @@ function snippetFor(synopsis: string | null, tokens: string[]): string {
 }
 
 function ResultRow({ item, tokens, onPick }: { item: SearchPromo; tokens: string[]; onPick: (item: SearchPromo) => void }) {
-  const { t } = useI18n();
+  const { t, genre } = useI18n();
   const { colors, isDark } = useTheme();
   const art = item.poster_url ?? item.thumbnail_url;
   const snippet = snippetFor(item.synopsis, tokens);
@@ -121,7 +121,7 @@ function ResultRow({ item, tokens, onPick }: { item: SearchPromo; tokens: string
           <Highlight text={item.title} tokens={tokens} />
         </Text>
         <Text numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
-          {[item.tags?.[0], item.total_episodes > 0 ? formatEpisodeCount(item.total_episodes, t) : null].filter(Boolean).join(" · ")}
+          {[item.tags?.[0] ? genre(item.tags[0]) : null, item.total_episodes > 0 ? formatEpisodeCount(item.total_episodes, t) : null].filter(Boolean).join(" · ")}
         </Text>
         {snippet ? (
           <Text numberOfLines={2} className="mt-1 text-[13px] leading-snug text-muted">

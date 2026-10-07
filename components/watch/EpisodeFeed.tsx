@@ -40,6 +40,7 @@ import { startDownload } from "@/lib/offline";
 import { storyboardPublicUrl } from "@/lib/storyboard";
 import { WEB_ORIGIN } from "@/lib/links";
 import { reportPlay } from "@/lib/reportPlay";
+import { useI18n } from "@/hooks/useI18n";
 
 const supabase = createClient();
 
@@ -128,6 +129,7 @@ async function getSignedVideoUrl(videoPath: string) {
 
 
 export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) {
+  const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
   const { wallet, refresh: refreshWallet } = useWallet(user?.id);
@@ -237,10 +239,10 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
             setStoryboardUrl(storyboardPublicUrl(supabase, loaded.video_url));
           }
         } else if (!cancelled) {
-          setVideoError("Couldn't load this video. Check your connection and try again.");
+          setVideoError(t("watch.videoLoadFailed"));
         }
       } else if (!cancelled) {
-        setVideoError("This episode has no video yet.");
+        setVideoError(t("watch.noVideo"));
       }
     });
 
@@ -294,7 +296,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     if (!ep || !title || unlocking) return;
     const cost = ep.unlock_cost_coins ?? title.default_episode_unlock_coins;
     if ((wallet?.coin_balance ?? 0) < cost) {
-      setUnlockError(`Not enough coins — you need ${cost} coins.`);
+      setUnlockError(t("watch.needCoins", { n: cost }));
       return;
     }
     setUnlocking(true);
@@ -302,7 +304,7 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
     const { data, error } = await supabase.rpc("unlock_episode", { p_user_id: user.id, p_episode_id: ep.id });
     setUnlocking(false);
     if (error || !data?.ok) {
-      setUnlockError(data?.error === "insufficient_coins" ? "Not enough coins." : error?.message ?? "Couldn't unlock this episode.");
+      setUnlockError(data?.error === "insufficient_coins" ? t("watch.notEnoughCoins") : error?.message ?? t("watch.unlockFailed"));
       return;
     }
     await refreshWallet();
@@ -425,13 +427,13 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
   if (loadFailed) {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-black px-10">
-        <Text className="font-display text-center text-[20px] font-semibold text-white">Couldn't load this episode</Text>
-        <Text className="text-center text-[14px] text-white/70">Check your connection and try again.</Text>
+        <Text className="font-display text-center text-[20px] font-semibold text-white">{t("watch.loadFailed")}</Text>
+        <Text className="text-center text-[14px] text-white/70">{t("foryou.checkConnection")}</Text>
         <Button size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
-          Try again
+          {t("common.retry")}
         </Button>
         <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
-          <Text className="text-[14px] text-white/50">← Back</Text>
+          <Text className="text-[14px] text-white/50">{t("common.backArrow")}</Text>
         </Button>
       </View>
     );
@@ -457,13 +459,13 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
         </Text>
         {unlockError ? <Text className="text-center text-[13px] text-crimson">{unlockError}</Text> : null}
         <Button size="lg" className="w-full" disabled={unlocking} onPress={handleUnlock}>
-          {unlocking ? "Unlocking…" : `Unlock for ${cost} coins`}
+          {unlocking ? t("watch.unlocking") : t("watch.unlockFor", { n: cost })}
         </Button>
         <Button variant="ghost" onPress={() => router.push("/wallet" as never)}>
-          <Text className="text-[14px] text-white/70 underline">Get more coins</Text>
+          <Text className="text-[14px] text-white/70 underline">{t("watch.getMoreCoins")}</Text>
         </Button>
         <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
-          <Text className="text-[14px] text-white/50">← Back</Text>
+          <Text className="text-[14px] text-white/50">{t("common.backArrow")}</Text>
         </Button>
       </View>
     );
@@ -474,10 +476,10 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
       <View className="flex-1 items-center justify-center gap-4 bg-black px-10">
         <Text className="text-center text-[15px] text-white/80">{videoError}</Text>
         <Button size="lg" className="w-full" onPress={() => setReloadKey((k) => k + 1)}>
-          Try again
+          {t("common.retry")}
         </Button>
         <Button variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
-          <Text className="text-[14px] text-white/50">← Back</Text>
+          <Text className="text-[14px] text-white/50">{t("common.backArrow")}</Text>
         </Button>
       </View>
     );
