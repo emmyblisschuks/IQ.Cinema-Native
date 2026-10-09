@@ -18,7 +18,6 @@ import {
   type GestureResponderEvent,
   type PanResponderGestureState,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { createClient } from "@/lib/supabase/client";
@@ -38,7 +37,7 @@ import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/shared/BottomSheet";
 import { startDownload } from "@/lib/offline";
 import { storyboardPublicUrl } from "@/lib/storyboard";
-import { WEB_ORIGIN } from "@/lib/links";
+import { shareLink } from "@/lib/share";
 import { reportPlay } from "@/lib/reportPlay";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -348,9 +347,10 @@ export function EpisodeFeed({ initialEpisodeId }: { initialEpisodeId: string }) 
   // ─── Share ─────────────────────────────────────────────────────────────────
   async function handleShare() {
     if (!ep || !title) return;
-    const url = `${WEB_ORIGIN}/watch/${title.slug}/ep-${ep.episode_number}`;
-    await Clipboard.setStringAsync(url).catch(() => {});
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    // Opens the Android share manager (iOS share sheet) instead of copying.
+    const shared = await shareLink({ title: title.title, path: `/watch/${title.slug}/ep-${ep.episode_number}` });
+    if (!shared) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setShareCount((n) => n + 1);
     // Server-side counter (episodes isn't client-writable).
     supabase.rpc("record_episode_share", { p_episode_id: ep.id }).then(({ data }) => {

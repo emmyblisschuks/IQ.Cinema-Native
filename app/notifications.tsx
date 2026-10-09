@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
@@ -20,17 +21,23 @@ export default function NotificationsPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [items, setItems] = useState<Notif[]|null>(null);
+  const { unread, version, refresh, markAllRead } = useNotifications();
 
+  // Reloads on open and whenever a notification arrives or changes.
   useEffect(() => {
     if (!user) return;
-    supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setItems((data as Notif[]) ?? []));
-  }, [user]);
+    supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100).then(({ data }) => setItems((data as Notif[]) ?? []));
+  }, [user, version]);
 
   async function open(n: Notif) {
-    if (!n.read) { setItems((p) => p?.map((x) => x.id===n.id?{...x,read:true}:x)??p); supabase.from("notifications").update({read:true}).eq("id",n.id).then(()=>{}); }
+    if (!n.read) {
+      setItems((p) => p?.map((x) => x.id===n.id?{...x,read:true}:x)??p);
+      supabase.from("notifications").update({read:true}).eq("id",n.id).then(()=>refresh());
+    }
     if (n.metadata?.href) router.push(n.metadata.href as never);
   }
-  async function remove(id: string) { setItems((p) => p?.filter((x) => x.id!==id)??p); await supabase.from("notifications").delete().eq("id",id); }
+  async function remove(id: string) { setItems((p) => p?.filter((x) => x.id!==id)??p); await supabase.from("notifications").delete().eq("id",id); refresh(); }
+  async function readAll() { setItems((p) => p?.map((x) => ({...x, read:true}))??p); await markAllRead(); }
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-bg">
@@ -38,7 +45,10 @@ export default function NotificationsPage() {
         <FadeIn>
           <View className="flex-row items-center gap-3">
             <Pressable onPress={() => router.push("/rewards" as never)} hitSlop={10}><Icon as={ArrowLeft} size={20} tone="text" /></Pressable>
-            <Text className="font-display text-2xl font-semibold text-text">{t("notifications.title")}</Text>
+            <Text className="flex-1 font-display text-2xl font-semibold text-text">{t("notifications.title")}</Text>
+            {unread > 0 ? (
+              <Pressable onPress={readAll} hitSlop={8}><Text className="text-[13px] font-semibold text-pink">Mark all read</Text></Pressable>
+            ) : null}
           </View>
           {items === null ? (
             <View className="mt-4 gap-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></View>

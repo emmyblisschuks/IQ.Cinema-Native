@@ -14,6 +14,7 @@ import { SegmentedControl } from "@/components/library/SegmentedControl";
 import { Text } from "@/components/ui/Text";
 import { useI18n } from "@/hooks/useI18n";
 import { useTheme } from "@/hooks/useTheme";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 export function ForYouHeader({
   tab,
@@ -98,6 +99,7 @@ export function ForYouHeader({
               ) : null}
             </View>
           </ScrollView>
+          <View className="-mt-2"><NotificationBell onVideo={onVideo} /></View>
           <Pressable onPress={onSearch} accessibilityLabel={t("common.search")} hitSlop={8} className="-mt-2 h-8 w-8 items-center justify-center">
             <Search size={19} color={fg} />
           </Pressable>

@@ -6,7 +6,7 @@
 // (get_for_you_feed_v2) and behaviour as the web feed.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, Share, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
@@ -14,7 +14,8 @@ import { ChevronRight, Flame, Play } from "lucide-react-native";
 import { createClient } from "@/lib/supabase/client";
 import { storyboardPublicUrl } from "@/lib/storyboard";
 import { reportPlay } from "@/lib/reportPlay";
-import { titlePath, WEB_ORIGIN } from "@/lib/links";
+import { titlePath } from "@/lib/links";
+import { shareLink } from "@/lib/share";
 import { formatCount } from "@/lib/format";
 import { DEFAULT_CATEGORY, type Category } from "@/lib/categories";
 import { EMPTY_COPY_KEY, parseForYouTab, rpcTabFor, type ForYouTab } from "@/lib/forYouTabs";
@@ -358,20 +359,19 @@ export function ForYouFeed() {
   }
 
   async function handleShare(item: PromoItem) {
-    const url = `${WEB_ORIGIN}${titlePath(item.slug)}`;
-    const { data } = await supabase.rpc("record_episode_share", { p_episode_id: item.episode_id });
+    // Open the system share sheet right away (never wait on the network), and
+    // only count the share if the viewer actually picked a target.
+    const shared = await shareLink({ title: item.title, path: titlePath(item.slug) });
+    if (!shared) return;
     setEngagement((prev) => ({
       ...prev,
-      [item.episode_id]: {
-        ...prev[item.episode_id],
-        shareCount: data?.ok ? data.share_count : (prev[item.episode_id]?.shareCount ?? 0) + 1,
-      },
+      [item.episode_id]: { ...prev[item.episode_id], shareCount: (prev[item.episode_id]?.shareCount ?? 0) + 1 },
     }));
-    try {
-      await Share.share({ message: `${item.title} — ${url}`, url, title: item.title });
-    } catch {
-      // dismissed
-    }
+    supabase.rpc("record_episode_share", { p_episode_id: item.episode_id }).then(({ data }) => {
+      if (data?.ok && typeof data.share_count === "number") {
+        setEngagement((prev) => ({ ...prev, [item.episode_id]: { ...prev[item.episode_id], shareCount: data.share_count } }));
+      }
+    });
   }
 
   async function openTray(item: PromoItem) {
@@ -414,6 +414,14 @@ export function ForYouFeed() {
       .maybeSingle();
     if (data?.id) router.push(`/watch/${data.id}` as never);
   }
+
+  // The slide that is >=60% on screen is the active one. More reliable than
+  // momentum-end events, which Android skips for short drags.
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const top = viewableItems.find((v) => v.isViewable && v.item);
+    if (top) setActiveId((top.item as PromoItem).episode_id);
+  }).current;
 
   const onScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -579,20 +587,32 @@ export function ForYouFeed() {
           keyExtractor={(i) => i.episode_id}
           renderItem={({ item }) => renderSlide(item)}
           extraData={[activeId, videoUrls, engagement, focused, showSearch, tab, slideH]}
+          style={{ flex: 1 }}
           pagingEnabled
           snapToInterval={slideH}
+          snapToAlignment="start"
+          disableIntervalMomentum
           decelerationRate="fast"
+          bounces={false}
+          overScrollMode="never"
+          nestedScrollEnabled
+          scrollEnabled
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({ length: slideH, offset: slideH * index, index })}
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
           onMomentumScrollEnd={onScrollEnd}
           onScrollEndDrag={(e) => {
             // Short drags with no momentum still settle on a page.
             if (e.nativeEvent.velocity && Math.abs(e.nativeEvent.velocity.y) < 0.05) onScrollEnd(e);
           }}
+          onScrollToIndexFailed={({ index }) => {
+            setTimeout(() => listRef.current?.scrollToOffset({ offset: index * slideH, animated: false }), 80);
+          }}
           windowSize={3}
           initialNumToRender={1}
           maxToRenderPerBatch={2}
-          removeClippedSubviews
         />
       ) : null}
 

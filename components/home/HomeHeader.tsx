@@ -6,6 +6,7 @@ import { Search } from "lucide-react-native";
 import { TextInput } from "@/components/ui/Text";
 import { Icon } from "@/components/ui/Icon";
 import { useI18n } from "@/hooks/useI18n";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 export function HomeHeader() {
   const { t } = useI18n();
@@ -29,6 +30,8 @@ export function HomeHeader() {
           className="flex-1 bg-transparent p-0 text-sm text-text"
         />
       </View>
+
+      <NotificationBell />
 
       <Image
         source={require("@/assets/icon.png")}

@@ -6,7 +6,7 @@
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Public web origin used when building shareable links.
-export const WEB_ORIGIN = process.env.EXPO_PUBLIC_WEB_ORIGIN ?? "https://iqcinema.app";
+export const WEB_ORIGIN = process.env.EXPO_PUBLIC_WEB_ORIGIN ?? "https://cinema.promptiq.com.ng";
 
 export function titlePath(slug: string) {
   return `/title/${slug}`;

@@ -169,6 +169,9 @@ export function VideoPlayer({
   const barWRef = useRef(0);
   const barX = useRef(0);
   const barRef = useRef<View>(null);
+  // Width of the tap overlay, measured with onLayout. (`currentTarget.width`
+  // doesn't exist on native, which made every double-tap count as "right".)
+  const overlayW = useRef(0);
   const grow = useRef(new Animated.Value(0)).current; // 0 idle → 1 dragging (bar/thumb size)
 
   const setProgressUI = useCallback(
@@ -365,6 +368,7 @@ export function VideoPlayer({
     armStallWatchdog();
     setSeekFlash({ side, key: Date.now() });
     setProgressUI(target, durationRef.current);
+    if (showControls) scheduleHide();
   }
 
   // Single tap toggles the control layer (whether playing or paused); a
@@ -569,8 +573,10 @@ export function VideoPlayer({
           same side within the window seeks instead. */}
       <Pressable
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-        onPress={(e) => handleOverlayTap(e.nativeEvent.locationX, (e.currentTarget as unknown as { width?: number }).width ?? 0)}
-        onLayout={undefined}
+        onPress={(e) => handleOverlayTap(e.nativeEvent.locationX, overlayW.current)}
+        onLayout={(e: LayoutChangeEvent) => {
+          overlayW.current = e.nativeEvent.layout.width;
+        }}
       />
 
       {buffering ? (
@@ -593,18 +599,42 @@ export function VideoPlayer({
       {/* Center play/pause — only when paused, or briefly after a tap reveals
           the control layer. */}
       <FadeLayer visible={showControls} style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-        <Pressable
-          onPress={() => {
-            setIconPulse((n) => n + 1);
-            togglePlay();
-          }}
-          className="h-16 w-16 items-center justify-center rounded-full bg-black/45"
-          style={({ pressed }) => (pressed ? { transform: [{ scale: 0.95 }] } : null)}
-        >
-          <Pop active trigger={iconPulse}>
-            {playing ? <Pause size={26} color="#fff" fill="#fff" /> : <Play size={26} color="#fff" fill="#fff" style={{ marginLeft: 2 }} />}
-          </Pop>
-        </Pressable>
+        <View pointerEvents="box-none" className="flex-row items-center gap-8">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Rewind ${SEEK_SECONDS} seconds`}
+            hitSlop={10}
+            onPress={() => seekBy(-SEEK_SECONDS, "left")}
+            className="h-12 w-12 items-center justify-center rounded-full bg-black/45"
+            style={({ pressed }) => (pressed ? { transform: [{ scale: 0.92 }] } : null)}
+          >
+            <RotateCcw size={22} color="#fff" />
+            <Text className="absolute text-[9px] font-bold text-white" style={{ marginTop: 1 }}>{SEEK_SECONDS}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setIconPulse((n) => n + 1);
+              togglePlay();
+            }}
+            className="h-16 w-16 items-center justify-center rounded-full bg-black/45"
+            style={({ pressed }) => (pressed ? { transform: [{ scale: 0.95 }] } : null)}
+          >
+            <Pop active trigger={iconPulse}>
+              {playing ? <Pause size={26} color="#fff" fill="#fff" /> : <Play size={26} color="#fff" fill="#fff" style={{ marginLeft: 2 }} />}
+            </Pop>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Forward ${SEEK_SECONDS} seconds`}
+            hitSlop={10}
+            onPress={() => seekBy(SEEK_SECONDS, "right")}
+            className="h-12 w-12 items-center justify-center rounded-full bg-black/45"
+            style={({ pressed }) => (pressed ? { transform: [{ scale: 0.92 }] } : null)}
+          >
+            <RotateCw size={22} color="#fff" />
+            <Text className="absolute text-[9px] font-bold text-white" style={{ marginTop: 1 }}>{SEEK_SECONDS}</Text>
+          </Pressable>
+        </View>
       </FadeLayer>
 
       {/* Top bar (back + EP badge + speed/more) — same show/hide behaviour as

@@ -28,6 +28,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { UserSettingsProvider, useUserSettings } from "@/hooks/useUserSettings";
 import { I18nProvider } from "@/hooks/useI18n";
 import { NotificationListener } from "@/components/shared/NotificationListener";
+import { NotificationsProvider } from "@/hooks/useNotifications";
 import { OnlineProvider } from "@/hooks/useOnlineStatus";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
@@ -71,6 +72,7 @@ function Shell() {
        <UserSettingsProvider>
         <I18nBridge>
          <NavChromeProvider>
+          <NotificationsProvider>
           <NotificationListener />
           <View className="w-full max-w-md flex-1 self-center bg-bg">
             <Stack
@@ -83,6 +85,7 @@ function Shell() {
           </View>
           <OfflineBanner />
           <BottomNav />
+          </NotificationsProvider>
          </NavChromeProvider>
         </I18nBridge>
        </UserSettingsProvider>
