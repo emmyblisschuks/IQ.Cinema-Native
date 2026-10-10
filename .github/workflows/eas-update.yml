@@ -14,7 +14,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm install -g eas-cli
-      - run: eas update --branch preview --platform android --environment preview --message "${{ github.event.head_commit.message || 'manual trigger' }}" --non-interactive
+      - run: eas update --branch preview --platform android --environment preview --message "${COMMIT_MSG:-manual trigger}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
           CI: 1
