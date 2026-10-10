@@ -1,16 +1,14 @@
 // components/foryou/ForYouHeader.tsx
 //
-// Tab strip (For you / New / Trending / Collections) floating over the video,
-// plus the search button. Collections adds an All/Drama/Story/Anime chip row.
+// Tab strip (For you / New / Trending) floating over the video, plus the
+// search button.
 
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Search } from "lucide-react-native";
-import { CATEGORIES, type Category } from "@/lib/categories";
 import { FOR_YOU_TABS, type ForYouTab } from "@/lib/forYouTabs";
-import { SegmentedControl } from "@/components/library/SegmentedControl";
 import { Text } from "@/components/ui/Text";
 import { useI18n } from "@/hooks/useI18n";
 import { useTheme } from "@/hooks/useTheme";
@@ -19,15 +17,11 @@ import { NotificationBell } from "@/components/shared/NotificationBell";
 export function ForYouHeader({
   tab,
   onTabChange,
-  category,
-  onCategoryChange,
   onSearch,
   onVideo = true,
 }: {
   tab: ForYouTab;
   onTabChange: (tab: ForYouTab) => void;
-  category: Category;
-  onCategoryChange: (category: Category) => void;
   onSearch: () => void;
   // True while a video sits behind the header (white text on a dark scrim);
   // false for loading/empty states, which use the app theme instead.
@@ -105,11 +99,6 @@ export function ForYouHeader({
           </Pressable>
         </View>
 
-        {tab === "collections" ? (
-          <View className="mt-1">
-            <SegmentedControl ariaLabel={t("foryou.collection")} tone={onVideo ? "overlay" : "themed"} options={CATEGORIES} value={category} onChange={onCategoryChange} />
-          </View>
-        ) : null}
       </View>
     </View>
   );

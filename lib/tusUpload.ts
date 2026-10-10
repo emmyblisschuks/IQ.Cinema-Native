@@ -103,8 +103,30 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
     if (s === 415) throw new UploadError("bad_file", "This file type isn't accepted. Use an MP4 or MOV video.", s);
     throw new UploadError("server", `${what} failed (server answered ${s}).`, s);
   };
+  // Same defaults as tus-js-client: 409 (offset mismatch), 423 (previous request
+  // still holds the upload lock — normal right after a dropped connection),
+  // 408/429 and any 5xx are worth another try. 403 is included because Supabase
+  // can answer it briefly while a refreshed token propagates.
+  const RETRYABLE_STATUS = new Set([403, 408, 409, 423, 429]);
   const isRetryable = (e: unknown) =>
-    e instanceof UploadError ? e.code === "network" || (e.code === "server" && ((e.status ?? 500) >= 500 || e.status === 403)) : true;
+    e instanceof UploadError
+      ? e.code === "network" || (e.code === "server" && ((e.status ?? 500) >= 500 || RETRYABLE_STATUS.has(e.status ?? 0)))
+      : true;
+
+  // Progress shown to the person never goes backwards. After a dropped
+  // connection the server may only have a little less than we had handed to the
+  // network; we re-send that bit quietly while the bar holds its place. Only a
+  // genuinely brand-new upload (the server forgot ours) resets it.
+  let highWater = 0;
+  const report = (value: number) => {
+    const v = Math.max(highWater, Math.min(size, value));
+    highWater = v;
+    opts.onProgress?.(v, size);
+  };
+  const resetReport = () => {
+    highWater = 0;
+    opts.onProgress?.(0, size);
+  };
 
   async function create(): Promise<string> {
     const meta = Object.entries(opts.metadata).map(([k, v]) => `${k} ${b64(v)}`).join(",");
@@ -182,7 +204,21 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
     if (opts.resumeKey && deps.store) await deps.store.set(opts.resumeKey, url);
   }
 
-  opts.onProgress?.(offset, size);
+  report(offset);
+
+  // After any failure: ask the server how much it really has — and keep asking
+  // (with back-off, waiting out an outage) until it answers. We never send
+  // another piece from a guessed offset. `null` = the server forgot the upload.
+  async function resync() {
+    const off = await withRetry(() => serverOffset(url as string));
+    if (off === null) {
+      url = await startFresh();
+      offset = 0;
+      resetReport();
+    } else {
+      offset = off;
+    }
+  }
 
   // 3) Send the file piece by piece.
   let attempt = 0;
@@ -200,7 +236,7 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
         headers: await authed({ "Content-Type": "application/offset+octet-stream", "Upload-Offset": String(offset) }),
         body,
         signal: opts.signal,
-        onUploadProgress: (sent) => opts.onProgress?.(Math.min(size, base + sent), size),
+        onUploadProgress: (sent) => report(base + sent),
       });
       if (res.status === 401) {
         headersCache = await opts.getHeaders(true);
@@ -208,53 +244,35 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
       }
       if (res.status === 409) {
         // Offset mismatch: our idea of the offset is stale. Ask the server.
-        const off = await serverOffset(url);
-        if (off === null) {
-          url = await startFresh();
-          offset = 0;
-          opts.onProgress?.(0, size);
-        } else {
-          offset = off;
-        }
+        await resync();
         continue;
       }
       if (res.status !== 204 && res.status !== 200) fail(res, "Sending the video");
       const next = parseInt(lower(res.headers)["upload-offset"] ?? "", 10);
       offset = Number.isFinite(next) ? next : offset + length;
-      opts.onProgress?.(offset, size);
+      report(offset);
       attempt = 0;
     } catch (e) {
       if (opts.signal?.aborted) throw new UploadError("aborted", "Upload cancelled.");
       if (e instanceof UploadError && !isRetryable(e)) throw e;
-      if (attempt >= retryDelays.length) {
-        // Out of quick retries. If the phone is simply offline, wait for the
-        // connection and then carry on from the saved offset — no tapping.
-        if (deps.waitForOnline && (await deps.waitForOnline(opts.signal))) {
-          attempt = 0;
-          checkAbort();
-          continue;
+
+      // Offline? Wait for the connection first — an outage must not use up the
+      // retry budget. Coming back online starts the count afresh.
+      if (deps.waitForOnline && (await deps.waitForOnline(opts.signal))) {
+        attempt = 0;
+      } else {
+        if (attempt >= retryDelays.length) {
+          throw e instanceof UploadError && e.code !== "network"
+            ? e
+            : new UploadError("network", "The connection kept dropping. Your progress is saved — check your connection and tap Retry to continue.");
         }
-        throw e instanceof UploadError && e.code !== "network"
-          ? e
-          : new UploadError("network", "The connection kept dropping. Your progress is saved — check your connection and tap Retry to continue.");
+        opts.onStatus?.({ phase: "retrying", attempt: attempt + 1, detail: e instanceof Error ? e.message : String(e) });
+        await sleep(retryDelays[attempt++]);
       }
-      opts.onStatus?.({ phase: "retrying", attempt: attempt + 1, detail: e instanceof Error ? e.message : String(e) });
-      await sleep(retryDelays[attempt++]);
       checkAbort();
-      // The failed PATCH may have been partly or fully applied: re-sync.
-      try {
-        const off = await serverOffset(url);
-        if (off === null) {
-          // The server really lost it: only now start a new upload.
-          url = await startFresh();
-          offset = 0;
-          opts.onProgress?.(0, size);
-        } else {
-          offset = off;
-        }
-      } catch {
-        // can't tell yet (still offline / server hiccup): loop and try the PATCH again
-      }
+      // The failed PATCH may have been partly or fully applied: re-sync before
+      // sending anything else.
+      await resync();
     }
   }
 

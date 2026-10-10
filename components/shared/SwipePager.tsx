@@ -13,11 +13,12 @@
 // change it (onChange) once a swipe has been committed.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
-import { Animated, Easing, PanResponder, View } from "react-native";
+import { Animated, Easing, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 // How far (as a share of the screen) a drag must travel to commit...
 const COMMIT_DISTANCE = 0.18;
-// ...or how fast a flick must be (px per ms).
+// ...or how fast a flick must be (px per ms; gesture-handler reports px/s).
 const COMMIT_VELOCITY = 0.45;
 const SLIDE_MS = 240;
 
@@ -101,7 +102,11 @@ export function SwipePager<T>({ items, idOf, activeId, onChange, loop, height, d
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start(({ finished }) => {
-        if (!finished) return;
+        if (!finished) {
+          // Interrupted: never leave the pager locked.
+          animating.current = false;
+          return;
+        }
         change(id(list[target]));
         // Safety net: if the parent declined the change, come back.
         settleTimer.current = setTimeout(() => {
@@ -113,30 +118,44 @@ export function SwipePager<T>({ items, idOf, activeId, onChange, loop, height, d
     [translateY, springBack]
   );
 
+  // The drag is a react-native-gesture-handler Pan rather than a PanResponder.
+  // A PanResponder has to win a negotiation with every Pressable / scrub bar
+  // inside the video (and keeps stale dx/dy when it loses one), so swipes were
+  // easily swallowed. A native Pan only activates once the finger has moved
+  // 10px vertically (and fails on mostly-horizontal moves), and when it does
+  // it cancels whatever tap was in progress underneath — taps still work.
   const pan = useMemo(
     () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_e, g) =>
-          !live.current.disabled && !animating.current && Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
-        onPanResponderMove: (_e, g) => {
+      Gesture.Pan()
+        .runOnJS(true)
+        .enabled(!disabled)
+        .activeOffsetY([-10, 10])
+        .failOffsetX([-30, 30])
+        .onUpdate((e) => {
+          if (animating.current) return;
           const { prevIdx: p, nextIdx: nx } = live.current;
-          let dy = g.dy;
+          let dy = e.translationY;
           // Nothing in that direction → rubber-band.
           if (dy < 0 && nx === null) dy *= 0.25;
           if (dy > 0 && p === null) dy *= 0.25;
           translateY.setValue(dy);
-        },
-        onPanResponderRelease: (_e, g) => {
+        })
+        .onEnd((e) => {
+          if (animating.current) return;
           const h = live.current.height;
-          const up = g.dy < -h * COMMIT_DISTANCE || g.vy < -COMMIT_VELOCITY;
-          const down = g.dy > h * COMMIT_DISTANCE || g.vy > COMMIT_VELOCITY;
+          const vy = e.velocityY / 1000; // px per ms
+          const up = e.translationY < -h * COMMIT_DISTANCE || vy < -COMMIT_VELOCITY;
+          const down = e.translationY > h * COMMIT_DISTANCE || vy > COMMIT_VELOCITY;
           if (up) commit(1);
           else if (down) commit(-1);
           else springBack();
-        },
-        onPanResponderTerminate: () => springBack(),
-      }),
-    [translateY, springBack, commit]
+        })
+        .onFinalize((_e, success) => {
+          // Cancelled (e.g. a system gesture took over): never leave the page
+          // stranded half-way.
+          if (!success && !animating.current) springBack();
+        }),
+    [disabled, translateY, springBack, commit]
   );
 
   // Programmatic "go to next" (e.g. the video ended).
@@ -158,7 +177,8 @@ export function SwipePager<T>({ items, idOf, activeId, onChange, loop, height, d
   ];
 
   return (
-    <View style={{ flex: 1, overflow: "hidden", backgroundColor: "#000" }} {...pan.panHandlers}>
+    <GestureDetector gesture={pan}>
+    <View style={{ flex: 1, overflow: "hidden", backgroundColor: "#000" }}>
       <Animated.View
         style={{
           position: "absolute",
@@ -176,5 +196,6 @@ export function SwipePager<T>({ items, idOf, activeId, onChange, loop, height, d
         ))}
       </Animated.View>
     </View>
+    </GestureDetector>
   );
 }

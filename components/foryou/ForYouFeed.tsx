@@ -1,7 +1,7 @@
 // components/foryou/ForYouFeed.tsx
 //
 // The For You tab: a vertical, full-height pager of promo episodes (one video
-// at a time) with For you / New / Trending / Collections tabs, search, the
+// at a time) with For you / New / Trending tabs, search, the
 // action rail, comments, episode tray and title details — same data
 // (get_for_you_feed_v2) and behaviour as the web feed.
 
@@ -17,7 +17,6 @@ import { reportPlay } from "@/lib/reportPlay";
 import { titlePath } from "@/lib/links";
 import { shareLink } from "@/lib/share";
 import { formatCount } from "@/lib/format";
-import { DEFAULT_CATEGORY, type Category } from "@/lib/categories";
 import { EMPTY_COPY_KEY, parseForYouTab, rpcTabFor, type ForYouTab } from "@/lib/forYouTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
@@ -60,7 +59,6 @@ export function ForYouFeed() {
   const focused = pathname === "/for-you" || pathname.startsWith("/for-you/");
 
   const [tab, setTab] = useState<ForYouTab>(() => parseForYouTab(params.tab));
-  const [category, setCategory] = useState<Category>(DEFAULT_CATEGORY);
 
   const [items, setItems] = useState<PromoItem[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -131,7 +129,7 @@ export function ForYouFeed() {
         p_tab: rpcTabFor(tab),
         p_limit: PAGE_SIZE,
         p_offset: offset,
-        p_category: tab === "collections" ? category : null,
+        p_category: null,
       });
       if (!error) return (data as PromoItem[]) ?? [];
       // v2 not deployed on this database yet: the original newest-first feed
@@ -144,10 +142,10 @@ export function ForYouFeed() {
       return null;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tab, category]
+    [tab]
   );
 
-  // First page — reruns whenever the tab or collection category changes.
+  // First page — reruns whenever the tab changes.
   useEffect(() => {
     const token = ++feedTokenRef.current;
     setItems(null);
@@ -174,7 +172,7 @@ export function ForYouFeed() {
       if (batch.length < PAGE_SIZE) setExhausted(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, category, reloadKey]);
+  }, [tab, reloadKey]);
 
   // Splice a promo in right after the current slide (or just scroll to it if
   // it's already in the feed) and make it the active one. Used by the
@@ -413,8 +411,6 @@ export function ForYouFeed() {
       onVideo={hasVideo}
       tab={tab}
       onTabChange={(next) => next !== tab && setTab(next)}
-      category={category}
-      onCategoryChange={setCategory}
       onSearch={() => setShowSearch(true)}
     />
   );
