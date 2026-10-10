@@ -70,6 +70,7 @@ export function VideoPlayer({
   storyboardUrl,
   hideWatermark = false,
   embedded = false,
+  loop = false,
   bottomContent,
   cta,
 }: {
@@ -100,6 +101,8 @@ export function VideoPlayer({
   hideWatermark?: boolean;
   // Sits above the tab bar (which already covers the bottom safe area).
   embedded?: boolean;
+  // Replay forever (used when a feed has only one video to show).
+  loop?: boolean;
   bottomContent?: ReactNode;
   cta?: ReactNode;
 }) {
@@ -110,6 +113,10 @@ export function VideoPlayer({
     p.timeUpdateEventInterval = 0.25;
     p.bufferOptions = { ...p.bufferOptions, preferredForwardBufferDuration: 20 };
   });
+
+  useEffect(() => {
+    player.loop = loop;
+  }, [player, loop]);
 
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

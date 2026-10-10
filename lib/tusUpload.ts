@@ -32,6 +32,10 @@ export type TusDeps = {
     del: (key: string) => Promise<void>;
   };
   sleep?: (ms: number) => Promise<void>;
+  // Resolves once the backend is reachable again. Returns true if it actually
+  // had to wait (false = it was already reachable). Lets an upload sit out a
+  // long outage and then continue, instead of giving up after a minute.
+  waitForOnline?: (signal?: AbortSignal) => Promise<boolean>;
 };
 
 export type TusOptions = {
@@ -100,7 +104,7 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
     throw new UploadError("server", `${what} failed (server answered ${s}).`, s);
   };
   const isRetryable = (e: unknown) =>
-    e instanceof UploadError ? e.code === "network" || (e.code === "server" && (e.status ?? 500) >= 500) : true;
+    e instanceof UploadError ? e.code === "network" || (e.code === "server" && ((e.status ?? 500) >= 500 || e.status === 403)) : true;
 
   async function create(): Promise<string> {
     const meta = Object.entries(opts.metadata).map(([k, v]) => `${k} ${b64(v)}`).join(",");
@@ -124,12 +128,29 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
     return resolveUrl(loc, opts.endpoint);
   }
 
+  // How many bytes the server already has. `null` means ONLY "the server no
+  // longer has this upload" (404/410). Anything unclear (offline, 5xx, 401/403
+  // right after reconnecting, 423 locked…) THROWS so the caller retries — it
+  // must never be mistaken for "start over", that is what threw progress away.
   async function serverOffset(url: string): Promise<number | null> {
-    const res = await deps.request({ method: "HEAD", url, headers: await authed({}), signal: opts.signal });
-    if (res.status === 404 || res.status === 410 || res.status === 403) return null; // upload expired/unknown
-    if (res.status < 200 || res.status >= 300) throw new UploadError("server", `Checking upload progress failed (${res.status}).`, res.status);
+    let res = await deps.request({ method: "HEAD", url, headers: await authed({}), signal: opts.signal });
+    if (res.status === 401) res = await deps.request({ method: "HEAD", url, headers: await authed({}, true), signal: opts.signal });
+    if (res.status === 404 || res.status === 410) return null;
+    if (res.status < 200 || res.status >= 300) {
+      throw new UploadError(res.status === 403 || res.status >= 500 ? "server" : "network", `Checking upload progress failed (${res.status}).`, res.status);
+    }
     const off = parseInt(lower(res.headers)["upload-offset"] ?? "", 10);
-    return Number.isFinite(off) ? off : null;
+    if (!Number.isFinite(off)) throw new UploadError("network", "The server didn't say how much it has yet.");
+    return off;
+  }
+
+  // The server forgot the upload (expired / cleaned up): the only honest option
+  // is a fresh one.
+  async function startFresh(): Promise<string> {
+    if (opts.resumeKey && deps.store) await deps.store.del(opts.resumeKey);
+    const fresh = await withRetry(() => create());
+    if (opts.resumeKey && deps.store) await deps.store.set(opts.resumeKey, fresh);
+    return fresh;
   }
 
   let url: string | null = null;
@@ -140,16 +161,16 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
     const saved = await deps.store.get(opts.resumeKey);
     if (saved) {
       opts.onStatus?.({ phase: "resuming" });
-      try {
-        const off = await serverOffset(saved);
-        if (off !== null && off <= size) {
-          url = saved;
-          offset = off;
-        } else {
-          await deps.store.del(opts.resumeKey);
-        }
-      } catch {
-        // can't tell → start fresh below
+      // Retries (and waits out an outage) rather than guessing: a hiccup while
+      // asking "how much do you have?" must NOT turn into a brand-new upload.
+      // If it still can't be answered, this throws and the saved address stays,
+      // so the next attempt continues from the same place.
+      const off = await withRetry(() => serverOffset(saved));
+      if (off !== null && off <= size) {
+        url = saved;
+        offset = off;
+      } else {
+        await deps.store.del(opts.resumeKey);
       }
     }
   }
@@ -188,8 +209,13 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
       if (res.status === 409) {
         // Offset mismatch: our idea of the offset is stale. Ask the server.
         const off = await serverOffset(url);
-        if (off === null) throw new UploadError("server", "The upload expired. Please start it again.", 409);
-        offset = off;
+        if (off === null) {
+          url = await startFresh();
+          offset = 0;
+          opts.onProgress?.(0, size);
+        } else {
+          offset = off;
+        }
         continue;
       }
       if (res.status !== 204 && res.status !== 200) fail(res, "Sending the video");
@@ -201,6 +227,13 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
       if (opts.signal?.aborted) throw new UploadError("aborted", "Upload cancelled.");
       if (e instanceof UploadError && !isRetryable(e)) throw e;
       if (attempt >= retryDelays.length) {
+        // Out of quick retries. If the phone is simply offline, wait for the
+        // connection and then carry on from the saved offset — no tapping.
+        if (deps.waitForOnline && (await deps.waitForOnline(opts.signal))) {
+          attempt = 0;
+          checkAbort();
+          continue;
+        }
         throw e instanceof UploadError && e.code !== "network"
           ? e
           : new UploadError("network", "The connection kept dropping. Your progress is saved — check your connection and tap Retry to continue.");
@@ -211,11 +244,16 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
       // The failed PATCH may have been partly or fully applied: re-sync.
       try {
         const off = await serverOffset(url);
-        if (off === null) throw new UploadError("server", "The upload expired. Please start it again.", 404);
-        offset = off;
-      } catch (syncErr) {
-        if (syncErr instanceof UploadError && syncErr.code === "server" && (syncErr.status ?? 0) === 404) throw syncErr;
-        // still offline: loop and try the PATCH again
+        if (off === null) {
+          // The server really lost it: only now start a new upload.
+          url = await startFresh();
+          offset = 0;
+          opts.onProgress?.(0, size);
+        } else {
+          offset = off;
+        }
+      } catch {
+        // can't tell yet (still offline / server hiccup): loop and try the PATCH again
       }
     }
   }
@@ -234,6 +272,10 @@ export async function tusUpload(opts: TusOptions, deps: TusDeps): Promise<{ url:
         if (opts.signal?.aborted) throw new UploadError("aborted", "Upload cancelled.");
         if (e instanceof UploadError && !isRetryable(e)) throw e;
         if (i >= retryDelays.length) {
+          if (deps.waitForOnline && (await deps.waitForOnline(opts.signal))) {
+            i = 0;
+            continue;
+          }
           throw e instanceof UploadError && e.code !== "network"
             ? e
             : new UploadError("network", "Couldn't reach the server. Check your connection and try again.");

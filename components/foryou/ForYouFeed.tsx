@@ -6,7 +6,7 @@
 // (get_for_you_feed_v2) and behaviour as the web feed.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from "react-native";
+import { ActivityIndicator, Pressable, View, type LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
@@ -28,6 +28,7 @@ import { VideoPlayer } from "@/components/watch/VideoPlayer";
 import { ActionRail } from "@/components/watch/ActionRail";
 import { CommentsSheet } from "@/components/watch/CommentsSheet";
 import { EpisodeTray, type TrayEpisode } from "@/components/watch/EpisodeTray";
+import { SwipePager } from "@/components/shared/SwipePager";
 import { TitleDetailsSheet } from "@/components/watch/TitleDetailsSheet";
 import { ForYouHeader } from "@/components/foryou/ForYouHeader";
 import { ForYouSearch, type SearchPromo } from "@/components/foryou/ForYouSearch";
@@ -79,8 +80,8 @@ export function ForYouFeed() {
   const [slideH, setSlideH] = useState(0);
   const [feedError, setFeedError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [advanceKey, setAdvanceKey] = useState(0);
 
-  const listRef = useRef<FlatList<PromoItem>>(null);
   const savingRef = useRef<Set<string>>(new Set());
   const watchedRef = useRef(0);
   const lastPlayheadRef = useRef<number | null>(null);
@@ -180,24 +181,18 @@ export function ForYouFeed() {
   // "Similar titles" tap and by search results.
   const injectPromo = useCallback(
     (row: PromoItem) => {
-      let targetIdx = 0;
       setItems((prev) => {
         const cur = prev ?? [];
         const existing = cur.findIndex((i) => i.episode_id === row.episode_id);
-        if (existing >= 0) {
-          targetIdx = existing;
-          return cur;
-        }
+        if (existing >= 0) return cur;
         const idx = cur.findIndex((i) => i.episode_id === activeRef.current);
         const next = [...cur];
         const at = idx >= 0 ? idx + 1 : cur.length;
         next.splice(at, 0, row);
-        targetIdx = at;
         return next;
       });
       seedEngagement([row]);
       setActiveId(row.episode_id);
-      setTimeout(() => listRef.current?.scrollToIndex({ index: targetIdx, animated: false }), 60);
     },
     [seedEngagement]
   );
@@ -318,13 +313,10 @@ export function ForYouFeed() {
     void reportPlay(userIdRef.current, item.episode_id, watchedRef.current);
   }
 
-  function goToNext(item: PromoItem) {
-    if (!items) return;
-    const idx = items.findIndex((i) => i.episode_id === item.episode_id);
-    if (items[idx + 1]) {
-      listRef.current?.scrollToIndex({ index: idx + 1, animated: true });
-      setActiveId(items[idx + 1].episode_id);
-    }
+  // The video ended: slide to the next one. After the last item the feed
+  // wraps to the first (the pager loops once every page has been loaded).
+  function goToNext() {
+    if (items && items.length > 1) setAdvanceKey((k) => k + 1);
   }
 
   async function toggleSave(item: PromoItem) {
@@ -415,24 +407,6 @@ export function ForYouFeed() {
     if (data?.id) router.push(`/watch/${data.id}` as never);
   }
 
-  // The slide that is >=60% on screen is the active one. More reliable than
-  // momentum-end events, which Android skips for short drags.
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const top = viewableItems.find((v) => v.isViewable && v.item);
-    if (top) setActiveId((top.item as PromoItem).episode_id);
-  }).current;
-
-  const onScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!items || !slideH) return;
-      const idx = Math.round(e.nativeEvent.contentOffset.y / slideH);
-      const it = items[Math.max(0, Math.min(items.length - 1, idx))];
-      if (it) setActiveId(it.episode_id);
-    },
-    [items, slideH]
-  );
-
   const hasVideo = !!items && items.length > 0;
   const header = (
     <ForYouHeader
@@ -458,15 +432,16 @@ export function ForYouFeed() {
   }
 
   const active = items.find((i) => i.episode_id === activeId) ?? items[0];
+  const itemCount = items.length;
 
-  function renderSlide(item: PromoItem) {
-    const isActive = item.episode_id === activeId && focused && !showSearch;
+  function renderSlide(item: PromoItem, { active: isCurrent }: { active: boolean }) {
+    const isActive = isCurrent && focused && !showSearch;
     const eng = engagement[item.episode_id];
     const epLabel = item.total_episodes > 0 ? `EP.${Math.max(item.episode_number, 1)}/EP.${item.total_episodes}` : null;
     const art = item.thumbnail_url ?? item.poster_url;
 
     return (
-      <View style={{ height: slideH, backgroundColor: "#000" }}>
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
         {isActive ? (
           <VideoPlayer
             src={videoUrls[item.episode_id]}
@@ -474,12 +449,13 @@ export function ForYouFeed() {
             posterUrl={art ?? undefined}
             hideWatermark
             embedded
+            loop={itemCount === 1}
             onRequestFreshSrc={() => refreshVideoUrl(item.episode_id)}
             storyboardUrl={item.video_url && !/^https?:\/\//i.test(item.video_url) ? storyboardPublicUrl(supabase, item.video_url) : null}
             onTimeUpdate={(s) => reportProgress(item, s)}
             onEnded={() => {
               reportProgress(item, item.duration_seconds ?? lastPlayheadRef.current ?? 0, true);
-              goToNext(item);
+              goToNext();
             }}
             bottomContent={
               <View className="gap-2">
@@ -581,38 +557,17 @@ export function ForYouFeed() {
       />
 
       {slideH > 0 && items.length > 0 ? (
-        <FlatList
-          ref={listRef}
-          data={items}
-          keyExtractor={(i) => i.episode_id}
-          renderItem={({ item }) => renderSlide(item)}
-          extraData={[activeId, videoUrls, engagement, focused, showSearch, tab, slideH]}
-          style={{ flex: 1 }}
-          pagingEnabled
-          snapToInterval={slideH}
-          snapToAlignment="start"
-          disableIntervalMomentum
-          decelerationRate="fast"
-          bounces={false}
-          overScrollMode="never"
-          nestedScrollEnabled
-          scrollEnabled
-          scrollEventThrottle={16}
-          showsVerticalScrollIndicator={false}
-          getItemLayout={(_, index) => ({ length: slideH, offset: slideH * index, index })}
-          viewabilityConfig={viewabilityConfig}
-          onViewableItemsChanged={onViewableItemsChanged}
-          onMomentumScrollEnd={onScrollEnd}
-          onScrollEndDrag={(e) => {
-            // Short drags with no momentum still settle on a page.
-            if (e.nativeEvent.velocity && Math.abs(e.nativeEvent.velocity.y) < 0.05) onScrollEnd(e);
-          }}
-          onScrollToIndexFailed={({ index }) => {
-            setTimeout(() => listRef.current?.scrollToOffset({ offset: index * slideH, animated: false }), 80);
-          }}
-          windowSize={3}
-          initialNumToRender={1}
-          maxToRenderPerBatch={2}
+        <SwipePager
+          items={items}
+          idOf={(i) => i.episode_id}
+          activeId={activeId}
+          onChange={setActiveId}
+          // Wrap to the first video after the last, once every page is loaded.
+          loop={exhausted}
+          height={slideH}
+          disabled={showComments || showDetails || showTray || showSearch}
+          advanceKey={advanceKey}
+          renderSlide={renderSlide}
         />
       ) : null}
 

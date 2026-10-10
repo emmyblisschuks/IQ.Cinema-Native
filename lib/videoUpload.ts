@@ -27,11 +27,44 @@ const store: NonNullable<TusDeps["store"]> = {
   del: (k) => AsyncStorage.removeItem(`tus:v1:${k}`),
 };
 
+// JS-only reachability check (works on every installed build, no native module):
+// any HTTP answer from the backend, even a 401, proves the network path works.
+async function backendReachable(): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    await fetch(`${SUPABASE_URL}/auth/v1/health`, { method: "GET", headers: { apikey: SUPABASE_ANON_KEY }, signal: ctrl.signal });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Sits out an outage. Returns true if it had to wait, false if the backend was
+// already reachable (so a failure there is not the network's fault).
+async function waitForOnline(signal?: AbortSignal): Promise<boolean> {
+  let waited = false;
+  for (;;) {
+    if (signal?.aborted) throw new UploadError("aborted", "Upload cancelled.");
+    if (await backendReachable()) return waited;
+    waited = true;
+    await new Promise<void>((r) => setTimeout(r, 3000));
+  }
+}
+
 export const mimeForUri = (uri: string) => (/\.mov(\?|$)/i.test(uri) ? "video/quicktime" : "video/mp4");
 
 // Same file picked again → same key → the upload continues instead of restarting.
 export const resumeKeyFor = (titleId: string, slot: string, size: number, durationSeconds: number) =>
   `${titleId}:${slot}:${size}:${Math.round(durationSeconds)}`;
+
+// Forget a half-finished upload for good (the person removed / replaced the file).
+export async function clearResume(key: string) {
+  await store.del(key);
+  await AsyncStorage.removeItem(`tuspath:v1:${key}`);
+}
 
 export async function uploadVideo(opts: {
   uri: string;
@@ -66,6 +99,7 @@ export async function uploadVideo(opts: {
         readChunk: (o, l) => reader.read(o, l),
         request: xhrRequest,
         store,
+        waitForOnline,
       }
     );
 

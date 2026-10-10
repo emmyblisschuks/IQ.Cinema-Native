@@ -11,7 +11,7 @@ import * as ImagePicker from "expo-image-picker";
 import { File as FSFile } from "expo-file-system";
 import { CheckCircle2, FolderOpen, Images, RotateCw, TriangleAlert, X } from "lucide-react-native";
 import { createClient } from "@/lib/supabase/client";
-import { uploadVideo, resumeKeyFor, UploadError, type UploadUpdate } from "@/lib/videoUpload";
+import { uploadVideo, resumeKeyFor, clearResume, UploadError, type UploadUpdate } from "@/lib/videoUpload";
 import { canGenerateStoryboard, generateStoryboardNative } from "@/lib/storyboardNative";
 import { uploadStoryboard } from "@/lib/storyboard";
 import { formatBytes, formatEta, formatSpeed, type MeterSnapshot } from "@/lib/progressMeter";
@@ -79,7 +79,13 @@ export function UploadSlot({
     if (hasVideo && phase === "idle") setPhase("done");
   }, [hasVideo, phase]);
 
+  const pickedRef = useRef<PickedVideo | null>(null);
+  pickedRef.current = picked;
+
   const reset = useCallback(() => {
+    // Removing the file means the half-finished upload is no longer wanted.
+    const p = pickedRef.current;
+    if (p) void clearResume(resumeKeyFor(titleId, slot, p.size, p.duration));
     setPicked(null);
     setProblem(null);
     setError(null);
@@ -88,7 +94,7 @@ export function UploadSlot({
     setCancelledNote(false);
     uploadedRef.current = null;
     setPhase("idle");
-  }, []);
+  }, [titleId, slot]);
 
   async function handlePicked(uri: string, meta?: { duration?: number | null; width?: number; height?: number }) {
     setPhase("checking");
